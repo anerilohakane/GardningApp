@@ -1,11 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, Image, ScrollView, TextInput, TouchableOpacity, Dimensions, Animated, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Image, ScrollView, TextInput, TouchableOpacity, Dimensions, Animated, StyleSheet,Modal,TouchableWithoutFeedback } from 'react-native';
 import { FontAwesome, MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
 
 const Stack = createNativeStackNavigator();
 
@@ -310,12 +309,6 @@ function BookServiceScreen({ route, navigation }) {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [address, setAddress] = useState('');
-  const [name, setName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [attachments, setAttachments] = useState([]);
-  const [gardenNotes, setGardenNotes] = useState('');
   const [selectedSlot, setSelectedSlot] = useState(null);
 
   // Available time slots
@@ -353,63 +346,22 @@ function BookServiceScreen({ route, navigation }) {
     });
   };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
 
-    if (!result.canceled) {
-      setAttachments([...attachments, {
-        uri: result.assets[0].uri,
-        type: 'image/jpeg',
-        name: `garden_photo_${attachments.length + 1}.jpg`
-      }]);
+  const handleContinue = () => {
+    if (!selectedSlot) {
+      Alert.alert('Please select a time slot');
+      return;
     }
-  };
-
-  const takePhoto = async () => {
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setAttachments([...attachments, {
-        uri: result.assets[0].uri,
-        type: 'image/jpeg',
-        name: `garden_photo_${attachments.length + 1}.jpg`
-      }]);
-    }
-  };
-
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      });
-      
-      if (!result.canceled) {
-        setAttachments([...attachments, {
-          uri: result.assets[0].uri,
-          type: result.assets[0].mimeType,
-          name: result.assets[0].name
-        }]);
+    
+    const selectedTimeSlot = timeSlots.find(slot => slot.id === selectedSlot);
+    
+    navigation.navigate('CustomerDetails', {
+      service,
+      bookingDetails: {
+        date: selectedDate,
+        timeSlot: selectedTimeSlot.time
       }
-    } catch (err) {
-      console.log('Error picking document:', err);
-    }
-  };
-
-  const removeAttachment = (index) => {
-    const newAttachments = [...attachments];
-    newAttachments.splice(index, 1);
-    setAttachments(newAttachments);
+    });
   };
 
   return (
@@ -527,154 +479,533 @@ function BookServiceScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* Location Input */}
-          <View className="flex-row items-start py-3">
-            <View className="bg-green-100 p-2 rounded-full mr-3 mt-1">
-              <MaterialIcons name="location-on" size={20} color="#16A34A" />
-            </View>
-            <TextInput
-              placeholder="Service Address"
-              placeholderTextColor="#9CA3AF"
-              value={address}
-              onChangeText={setAddress}
-              className="flex-1 text-gray-700 text-base"
-              multiline
-              style={{ 
-                minHeight: 24,
-                textAlignVertical: 'top'
-              }}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Customer Info */}
-      <View className="mb-8">
-        <Text className="text-green-800 font-bold text-2xl mb-5">Your Information</Text>
-        
-        <View className="bg-white rounded-2xl p-5 shadow-lg shadow-green-200/80 border border-green-50">
-          <View className="flex-row items-center mb-4 py-2 border-b border-gray-100">
-            <View className="bg-green-100 p-2 rounded-full mr-3">
-              <MaterialIcons name="person" size={20} color="#16A34A" />
-            </View>
-            <TextInput
-              placeholder="Full Name"
-              placeholderTextColor="#9CA3AF"
-              value={name}
-              onChangeText={setName}
-              className="flex-1 text-gray-700 text-base"
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Garden Photos Section */}
-      <View className="mb-8">
-        <Text className="text-green-800 font-bold text-2xl mb-5">Share Your Garden Details</Text>
-        
-        <View className="bg-white rounded-2xl p-5 shadow-lg shadow-green-200/80 border border-green-50">
-          <Text className="text-gray-700 font-medium mb-3">Upload Garden Photos</Text>
-          <Text className="text-gray-500 text-sm mb-4">
-            Help us understand your space better by uploading photos of your garden/yard.
-          </Text>
-
-          {/* Photo Upload Buttons */}
-          <View className="flex-row justify-between mb-4">
-            {/* Take Photo Button */}
-            <TouchableOpacity 
-              className="flex-1 mr-2 border-2 border-dashed border-green-400 rounded-xl p-4 items-center justify-center bg-green-50"
-              activeOpacity={0.7}
-              onPress={takePhoto}
-            >
-              <MaterialCommunityIcons name="camera" size={28} color="#16A34A" />
-              <Text className="text-green-700 font-medium mt-2 text-center text-sm">
-                Take Photo
-              </Text>
-            </TouchableOpacity>
-            
-            {/* Choose from Gallery */}
-            <TouchableOpacity 
-              className="flex-1 ml-2 border-2 border-dashed border-green-400 rounded-xl p-4 items-center justify-center bg-green-50"
-              activeOpacity={0.7}
-              onPress={pickImage}
-            >
-              <MaterialIcons name="photo-library" size={28} color="#16A34A" />
-              <Text className="text-green-700 font-medium mt-2 text-center text-sm">
-                Choose Photo
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* File Upload Button */}
-          <TouchableOpacity 
-            className="border-2 border-dashed border-green-400 rounded-xl p-4 items-center justify-center bg-green-50 mb-4"
-            activeOpacity={0.7}
-            onPress={pickDocument}
-          >
-            <MaterialIcons name="attach-file" size={28} color="#16A34A" />
-            <Text className="text-green-700 font-medium mt-2 text-center">
-              Upload Documents (PDF, DOC)
-            </Text>
-            <Text className="text-gray-500 text-xs mt-1">
-              Site plans, sketches, or reference materials
-            </Text>
-          </TouchableOpacity>
-
-          {/* Preview of Selected Files */}
-          {attachments.length > 0 && (
-            <View className="mt-2">
-              <Text className="text-gray-600 mb-2">Attachments ({attachments.length}):</Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                className="pb-2"
-              >
-                {attachments.map((file, index) => (
-                  <View key={index} className="mr-3 relative">
-                    {file.type?.startsWith('image/') ? (
-                      <Image 
-                        source={{ uri: file.uri }} 
-                        className="w-24 h-24 rounded-lg"
-                      />
-                    ) : (
-                      <View className="w-24 h-24 bg-gray-100 rounded-lg items-center justify-center border border-gray-200">
-                        <MaterialIcons name="insert-drive-file" size={32} color="#6B7280" />
-                        <Text className="text-xs text-gray-500 mt-1 px-1 text-center" numberOfLines={1}>
-                          {file.name.length > 10 ? `${file.name.substring(0, 7)}...${file.name.split('.').pop()}` : file.name}
-                        </Text>
-                      </View>
-                    )}
-                    <TouchableOpacity 
-                      className="absolute -top-2 -right-2 bg-red-500 rounded-full w-6 h-6 items-center justify-center"
-                      onPress={() => removeAttachment(index)}
-                    >
-                      <Ionicons name="close" size={16} color="white" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Notes Field */}
-          <View className="mt-4">
-            <Text className="text-gray-700 mb-2">Additional Notes</Text>
-            <TextInput
-              placeholder="Any special instructions or details about your garden..."
-              placeholderTextColor="#9CA3AF"
-              value={gardenNotes}
-              onChangeText={setGardenNotes}
-              className="bg-gray-50 p-4 rounded-xl border border-gray-200 text-gray-700 h-32 text-align-top"
-              multiline
-            />
-          </View>
+          
         </View>
       </View>
 
       {/* Confirm Booking Button */}
       <TouchableOpacity 
         className="bg-green-600 rounded-lg py-4 px-6 flex-row justify-center items-center mb-8"
-        onPress={() => navigation.navigate('BookingConfirmation')}
+        onPress={handleContinue}
+        disabled={!selectedSlot}
+        style={!selectedSlot ? { opacity: 0.6 } : {}}
+      >
+        <Text className="text-white font-bold text-lg">Continue</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+
+
+function CustomerDetailsScreen({ route, navigation }) {
+  const { service, bookingDetails } = route.params;
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [communicationPrefs, setCommunicationPrefs] = useState({
+    email: true,
+    sms: false
+  });
+  
+  // Customer Address
+  const [customerAddress, setCustomerAddress] = useState({
+    street: '',
+    city: '',
+    state: '',
+    zip: ''
+  });
+  
+  // Property Details
+  const [properties, setProperties] = useState([
+    {
+      id: 1,
+      name: 'Property 1',
+      street: '',
+      city: '',
+      state: '',
+      zip: '',
+      size: '',
+      areas: {
+        frontyard: false,
+        backyard: false,
+        garden: false,
+        trees: false
+      },
+      photos: []
+    }
+  ]);
+  
+  const [activeProperty, setActiveProperty] = useState(1);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sorry, we need camera roll permissions to make this work!');
+      }
+      
+      const cameraStatus = await ImagePicker.requestCameraPermissionsAsync();
+      if (cameraStatus.status !== 'granted') {
+        alert('Sorry, we need camera permissions to make this work!');
+      }
+    })();
+  }, []);
+
+  const handleCustomerAddressChange = (field, value) => {
+    setCustomerAddress(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const handlePropertyChange = (propertyId, field, value) => {
+    setProperties(prev => 
+      prev.map(prop => 
+        prop.id === propertyId ? { ...prop, [field]: value } : prop
+      )
+    );
+  };
+  
+  const handleAreaToggle = (propertyId, area) => {
+    setProperties(prev => 
+      prev.map(prop => 
+        prop.id === propertyId 
+          ? { 
+              ...prop, 
+              areas: { 
+                ...prop.areas, 
+                [area]: !prop.areas[area] 
+              } 
+            } 
+          : prop
+      )
+    );
+  };
+  
+  const addProperty = () => {
+    const newId = properties.length > 0 ? Math.max(...properties.map(p => p.id)) + 1 : 1;
+    setProperties(prev => [
+      ...prev,
+      {
+        id: newId,
+        name: `Property ${newId}`,
+        street: '',
+        city: '',
+        state: '',
+        zip: '',
+        size: '',
+        areas: {
+          frontyard: false,
+          backyard: false,
+          garden: false,
+          trees: false
+        },
+        photos: []
+      }
+    ]);
+    setActiveProperty(newId);
+  };
+  
+  const removeProperty = (id) => {
+    if (properties.length <= 1) return;
+    setProperties(prev => prev.filter(prop => prop.id !== id));
+    if (activeProperty === id) {
+      setActiveProperty(properties[0].id);
+    }
+  };
+  
+  const takePhoto = async (propertyId) => {
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const newPhoto = {
+        id: Date.now(),
+        uri: result.assets[0].uri
+      };
+      
+      setProperties(prev => 
+        prev.map(prop => 
+          prop.id === propertyId 
+            ? { ...prop, photos: [...prop.photos, newPhoto] } 
+            : prop
+        )
+      );
+    }
+  };
+
+  const pickFromGallery = async (propertyId) => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const newPhoto = {
+        id: Date.now(),
+        uri: result.assets[0].uri
+      };
+      
+      setProperties(prev => 
+        prev.map(prop => 
+          prop.id === propertyId 
+            ? { ...prop, photos: [...prop.photos, newPhoto] } 
+            : prop
+        )
+      );
+    }
+  };
+  
+  const removePhoto = (propertyId, photoId) => {
+    setProperties(prev => 
+      prev.map(prop => 
+        prop.id === propertyId 
+          ? { ...prop, photos: prop.photos.filter(p => p.id !== photoId) } 
+          : prop
+      )
+    );
+  };
+  
+  const toggleCommunicationPref = (type) => {
+    setCommunicationPrefs(prev => ({
+      ...prev,
+      [type]: !prev[type]
+    }));
+  };
+  
+  const handleConfirmBooking = () => {
+    const bookingData = {
+      service,
+      customerDetails: {
+        name,
+        email,
+        phone,
+        address: customerAddress,
+        communicationPrefs
+      },
+      properties,
+      bookingDetails
+    };
+    
+    navigation.navigate('BookingConfirmation', {
+      bookingData
+    });
+  };
+
+  const currentProperty = properties.find(prop => prop.id === activeProperty);
+
+  return (
+    <ScrollView className="flex-1 bg-gray-50 p-5">
+      <View className="mb-6">
+        <Text className="text-green-800 font-bold text-2xl">Customer Details</Text>
+        <Text className="text-gray-600 mt-2">Please fill in your information</Text>
+      </View>
+
+      {/* Personal Information */}
+      <View className="mb-8">
+        <Text className="text-green-700 font-bold text-lg mb-4">Personal Information</Text>
+        
+        <View className="space-y-4 mb-6">
+          <View>
+            <Text className="text-gray-700 mb-1 font-medium">Full Name</Text>
+            <TextInput
+              placeholder="John Doe"
+              className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+              placeholderTextColor="#9CA3AF"
+              value={name}
+              onChangeText={setName}
+            />
+          </View>
+          
+          <View>
+            <Text className="text-gray-700 mb-1 font-medium">Email Address</Text>
+            <TextInput
+              placeholder="your@email.com"
+              className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+          
+          <View>
+            <Text className="text-gray-700 mb-1 font-medium">Phone Number</Text>
+            <TextInput
+              placeholder="+1 (123) 456-7890"
+              className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+            />
+          </View>
+        </View>
+
+        {/* Customer Address */}
+        <Text className="text-green-700 font-bold text-lg mb-4">Your Address</Text>
+        <View className="space-y-4 mb-6">
+          <View>
+            <Text className="text-gray-700 mb-1 font-medium">Street Address</Text>
+            <TextInput
+              placeholder="123 Main St"
+              className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+              placeholderTextColor="#9CA3AF"
+              value={customerAddress.street}
+              onChangeText={(text) => handleCustomerAddressChange('street', text)}
+            />
+          </View>
+          
+          <View className="flex-row">
+            <View className="flex-1 mr-2">
+              <Text className="text-gray-700 mb-1 font-medium">City</Text>
+              <TextInput
+                placeholder="City"
+                className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+                placeholderTextColor="#9CA3AF"
+                value={customerAddress.city}
+                onChangeText={(text) => handleCustomerAddressChange('city', text)}
+              />
+            </View>
+            <View className="flex-1 ml-2">
+              <Text className="text-gray-700 mb-1 font-medium">State</Text>
+              <TextInput
+                placeholder="State"
+                className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+                placeholderTextColor="#9CA3AF"
+                value={customerAddress.state}
+                onChangeText={(text) => handleCustomerAddressChange('state', text)}
+              />
+            </View>
+          </View>
+          
+          <View>
+            <Text className="text-gray-700 mb-1 font-medium">ZIP Code</Text>
+            <TextInput
+              placeholder="12345"
+              className="bg-white p-4 rounded-xl border border-gray-300 text-gray-800"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              value={customerAddress.zip}
+              onChangeText={(text) => handleCustomerAddressChange('zip', text)}
+            />
+          </View>
+        </View>
+
+        {/* Communication Preferences */}
+        <Text className="text-green-700 font-bold text-lg mb-4">Communication Preferences</Text>
+        <View className="flex-row items-center mb-2">
+          <TouchableOpacity
+            onPress={() => toggleCommunicationPref('email')}
+            className="mr-3"
+          >
+            <View className="w-6 h-6 rounded-md border border-gray-400 items-center justify-center">
+              {communicationPrefs.email && (
+                <MaterialIcons name="check" size={20} color="#16A34A" />
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text className="text-gray-700">Email</Text>
+        </View>
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => toggleCommunicationPref('sms')}
+            className="mr-3"
+          >
+            <View className="w-6 h-6 rounded-md border border-gray-400 items-center justify-center">
+              {communicationPrefs.sms && (
+                <MaterialIcons name="check" size={20} color="#16A34A" />
+              )}
+            </View>
+          </TouchableOpacity>
+          <Text className="text-gray-700">SMS/Text Message</Text>
+        </View>
+      </View>
+
+      {/* Property Details */}
+      <View className="mb-8">
+        <View className="flex-row justify-between items-center mb-4">
+          <Text className="text-green-700 font-bold text-lg">Property Details</Text>
+          <TouchableOpacity 
+            onPress={addProperty}
+            className="flex-row items-center bg-green-100 px-3 py-2 rounded-lg"
+          >
+            <Ionicons name="add" size={18} color="#16A34A" />
+            <Text className="text-green-700 ml-1">Add Property</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Property Tabs */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          className="mb-4"
+        >
+          <View className="flex-row">
+            {properties.map((property) => (
+              <TouchableOpacity
+                key={property.id}
+                onPress={() => setActiveProperty(property.id)}
+                className={`px-4 py-2 mr-2 rounded-lg ${activeProperty === property.id ? 'bg-green-600' : 'bg-gray-200'}`}
+              >
+                <Text className={`font-medium ${activeProperty === property.id ? 'text-white' : 'text-gray-700'}`}>
+                  {property.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* Current Property Form */}
+        {currentProperty && (
+          <View className="bg-white rounded-xl p-5 shadow-sm">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-gray-500 font-medium">{currentProperty.name}</Text>
+              {properties.length > 1 && (
+                <TouchableOpacity 
+                  onPress={() => removeProperty(currentProperty.id)}
+                  className="p-1"
+                >
+                  <MaterialIcons name="delete" size={20} color="#EF4444" />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <View className="space-y-4">
+              <Text className="text-gray-700 font-medium">Property Address</Text>
+              
+              <View>
+                <Text className="text-gray-600 mb-1 text-sm">Street</Text>
+                <TextInput
+                  placeholder="123 Main St"
+                  className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-800"
+                  placeholderTextColor="#9CA3AF"
+                  value={currentProperty.street}
+                  onChangeText={(text) => handlePropertyChange(currentProperty.id, 'street', text)}
+                />
+              </View>
+              
+              <View className="flex-row">
+                <View className="flex-1 mr-2">
+                  <Text className="text-gray-600 mb-1 text-sm">City</Text>
+                  <TextInput
+                    placeholder="City"
+                    className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-800"
+                    placeholderTextColor="#9CA3AF"
+                    value={currentProperty.city}
+                    onChangeText={(text) => handlePropertyChange(currentProperty.id, 'city', text)}
+                  />
+                </View>
+                <View className="flex-1 ml-2">
+                  <Text className="text-gray-600 mb-1 text-sm">State</Text>
+                  <TextInput
+                    placeholder="State"
+                    className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-800"
+                    placeholderTextColor="#9CA3AF"
+                    value={currentProperty.state}
+                    onChangeText={(text) => handlePropertyChange(currentProperty.id, 'state', text)}
+                  />
+                </View>
+              </View>
+              
+              <View>
+                <Text className="text-gray-600 mb-1 text-sm">ZIP Code</Text>
+                <TextInput
+                  placeholder="12345"
+                  className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-800"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="number-pad"
+                  value={currentProperty.zip}
+                  onChangeText={(text) => handlePropertyChange(currentProperty.id, 'zip', text)}
+                />
+              </View>
+              
+              <View>
+                <Text className="text-gray-600 mb-1 text-sm">Property Size (sq ft)</Text>
+                <TextInput
+                  placeholder="e.g., 5000"
+                  className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-gray-800"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="number-pad"
+                  value={currentProperty.size}
+                  onChangeText={(text) => handlePropertyChange(currentProperty.id, 'size', text)}
+                />
+              </View>
+              
+              <View>
+                <Text className="text-gray-700 font-medium mb-2">Areas Needing Service</Text>
+                <View className="flex-row flex-wrap">
+                  {Object.entries(currentProperty.areas).map(([area, selected]) => (
+                    <TouchableOpacity
+                      key={area}
+                      onPress={() => handleAreaToggle(currentProperty.id, area)}
+                      className={`flex-row items-center mr-4 mb-3 ${selected ? 'bg-green-100' : 'bg-gray-100'} px-3 py-2 rounded-lg`}
+                    >
+                      <View className={`w-5 h-5 rounded-sm border ${selected ? 'border-green-500 bg-green-500' : 'border-gray-400'} items-center justify-center mr-2`}>
+                        {selected && <MaterialIcons name="check" size={16} color="white" />}
+                      </View>
+                      <Text className="text-gray-700 capitalize">{area}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View>
+                <Text className="text-gray-700 font-medium mb-2">Property Photos</Text>
+                <Text className="text-gray-500 text-sm mb-3">Upload photos to help us understand your needs</Text>
+                
+                <View className="flex-row mb-3">
+                  <TouchableOpacity 
+                    onPress={() => takePhoto(currentProperty.id)}
+                    className="flex-row items-center bg-green-100 px-4 py-2 rounded-lg mr-3"
+                  >
+                    <MaterialCommunityIcons name="camera" size={18} color="#16A34A" />
+                    <Text className="text-green-700 ml-2">Take Photo</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    onPress={() => pickFromGallery(currentProperty.id)}
+                    className="flex-row items-center bg-gray-100 px-4 py-2 rounded-lg"
+                  >
+                    <MaterialIcons name="photo-library" size={18} color="#4B5563" />
+                    <Text className="text-gray-700 ml-2">From Gallery</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {currentProperty.photos.length > 0 && (
+                  <ScrollView horizontal className="py-2">
+                    {currentProperty.photos.map(photo => (
+                      <View key={photo.id} className="relative mr-3">
+                        <Image
+                          source={{ uri: photo.uri }}
+                          className="w-24 h-24 rounded-lg"
+                        />
+                        <TouchableOpacity 
+                          onPress={() => removePhoto(currentProperty.id, photo.id)}
+                          className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"
+                        >
+                          <MaterialIcons name="close" size={14} color="white" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Confirm Booking Button */}
+      <TouchableOpacity 
+        className="bg-green-600 rounded-lg py-4 px-6 flex-row justify-center items-center mb-8"
+        onPress={handleConfirmBooking}
       >
         <Text className="text-white font-bold text-lg">Confirm Booking</Text>
       </TouchableOpacity>
@@ -799,6 +1130,11 @@ const ServiceStack = () => {
         name="BookService" 
         component={BookServiceScreen} 
         options={{ title: 'Book Service' }} 
+      />
+       <Stack.Screen 
+        name="CustomerDetails" 
+        component={CustomerDetailsScreen} 
+        options={{ title: 'Your Details' }} 
       />
       <Stack.Screen 
         name="BookingConfirmation" 

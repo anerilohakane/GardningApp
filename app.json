@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "gardeningapp",
+    "scheme": "gardeningapp",
     "slug": "gardeningapp",
     "version": "1.0.0",
     "orientation": "portrait",

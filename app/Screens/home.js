@@ -5,7 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+// Tenant information
+const tenantInfo = {
+  name: "isaac-gomes-ernandes",
+  logo: "https://i.pinimg.com/736x/57/9a/e4/579ae4d3f89d19226bf16ce52779bd0c.jpg",
+  slogan: "Premium Landscaping Services"
+};
 
 // Enhanced mock data
 const servicesData = [
@@ -138,7 +145,7 @@ const serviceCategories = [
 const Header = ({ scrollY }) => {
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [Platform.OS === 'ios' ? 360 : 320, 100],
+    outputRange: [Platform.OS === 'ios' ? 300 : 260, 100],
     extrapolate: 'clamp'
   });
 
@@ -154,19 +161,14 @@ const Header = ({ scrollY }) => {
     extrapolate: 'clamp'
   });
 
-  const opacity = scrollY.interpolate({
-    inputRange: [0, 80],
-    outputRange: [1, 0],
-    extrapolate: 'clamp'
-  });
-
   const imageOpacity = scrollY.interpolate({
     inputRange: [0, 100],
     outputRange: [1, 0.7],
     extrapolate: 'clamp'
   });
 
-  return (
+
+ return (
     <Animated.View className="w-full overflow-hidden" style={{ height: headerHeight }}>
       <Animated.Image
         source={{ uri: 'https://images.unsplash.com/photo-1557429287-b2e26467fc2b?auto=format&fit=crop&q=80&w=1600' }}
@@ -177,10 +179,15 @@ const Header = ({ scrollY }) => {
         colors={['rgba(0,0,0,0.8)', 'transparent', 'rgba(0,0,0,0.6)']}
         className="absolute w-full h-full"
       />
+
       <View className="relative z-10 px-6 justify-end flex-1 pb-8">
         <Animated.Text 
           className="text-white text-base mb-1" 
-          style={{ opacity, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 2, textShadowOffset: { width: 1, height: 1 } }}
+          style={{ 
+            textShadowColor: 'rgba(0,0,0,0.5)', 
+            textShadowRadius: 2, 
+            textShadowOffset: { width: 1, height: 1 } 
+          }}
         >
           Welcome Back 👋
         </Animated.Text>
@@ -196,13 +203,10 @@ const Header = ({ scrollY }) => {
         >
           Transform Your Outdoor Space
         </Animated.Text>
-        <Animated.View 
-          className="flex-row items-center" 
-          style={{ opacity }}
-        >
+        <View className="flex-row items-center">
           <MaterialIcons name="location-on" size={16} color="#fff" />
           <Text className="text-white text-sm ml-1">Austin, TX • 78°F Sunny</Text>
-        </Animated.View>
+        </View>
       </View>
     </Animated.View>
   );
@@ -211,18 +215,71 @@ const Header = ({ scrollY }) => {
 const NextService = ({ services, onPress }) => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [expandedService, setExpandedService] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [serviceToCancel, setServiceToCancel] = useState(null);
   
+  const modalScale = useRef(new Animated.Value(0)).current;
+  const modalOpacity = useRef(new Animated.Value(0)).current;
+
   const toggleExpand = (id) => {
     setExpandedService(expandedService === id ? null : id);
   };
 
+  const openModal = (serviceId) => {
+    const service = services.find(s => s.id === serviceId);
+    setServiceToCancel(service);
+    
+    // Reset animations
+    modalScale.setValue(0);
+    modalOpacity.setValue(0);
+    
+    setShowCancelModal(true);
+    
+    // Animate in
+    Animated.parallel([
+      Animated.spring(modalScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 10,
+        bounciness: 6
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true
+      })
+    ]).start();
+  };
+
+  const closeModal = () => {
+    Animated.parallel([
+      Animated.spring(modalScale, {
+        toValue: 0,
+        useNativeDriver: true,
+        speed: 10
+      }),
+      Animated.timing(modalOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true
+      })
+    ]).start(() => setShowCancelModal(false));
+  };
+
+  const handleCancelConfirm = () => {
+    closeModal();
+    // Actual cancellation logic would go here
+    console.log('Cancelling service:', serviceToCancel);
+  };
+
   const handleServiceAction = (action, serviceId) => {
-    if (action === 'details') {
-      const service = services.find(s => s.id === serviceId);
-      onPress('ServiceDetails', { service });
+    if (action === 'cancel') {
+      openModal(serviceId);
     } else if (action === 'reschedule') {
       const service = services.find(s => s.id === serviceId);
       onPress('Reschedule', { service });
+    } else if (action === 'all-services') {
+      onPress('AllServices');
     } else {
       onPress(action);
     }
@@ -327,10 +384,10 @@ const NextService = ({ services, onPress }) => {
                       <Text className="text-emerald-600 text-sm font-medium">Reschedule</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                      className="flex-1 bg-emerald-500 rounded-lg py-2 items-center"
-                      onPress={() => handleServiceAction('details', service.id)}
+                      className="flex-1 bg-white border  border-red-500 rounded-lg py-2 items-center"
+                      onPress={() => handleServiceAction('cancel', service.id)}
                     >
-                      <Text className="text-white text-sm font-medium">Details</Text>
+                      <Text className="text-red-500 text-sm font-medium">Cancel</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -348,6 +405,80 @@ const NextService = ({ services, onPress }) => {
           <Text className="text-gray-300 text-sm mt-1">Your completed services will appear here</Text>
         </View>
       )}
+
+      {/* Enhanced Modal */}
+      {showCancelModal && (
+        <View className="absolute inset-0 justify-center items-center z-50">
+          {/* Backdrop */}
+          <Animated.View 
+            className="absolute inset-0 bg-black"
+            style={{ opacity: modalOpacity.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 0.5]
+            })}}
+          />
+          
+          {/* Modal Content */}
+          <Animated.View 
+            className="bg-white rounded-2xl w-11/12 max-w-md overflow-hidden"
+            style={{
+              transform: [{ scale: modalScale }],
+              opacity: modalOpacity,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+              elevation: 10
+            }}
+          >
+            {/* Modal Header */}
+            <View className="bg-red-50 px-6 py-4 border-b border-red-100">
+              <View className="flex-row items-center">
+                <View className="bg-red-100 p-2 rounded-full mr-3">
+                  <MaterialIcons name="warning" size={20} color="#EF4444" />
+                </View>
+                <Text className="text-lg font-bold text-gray-900">Cancel Service</Text>
+              </View>
+            </View>
+            
+            {/* Modal Body */}
+            <View className="p-6">
+              <Text className="text-gray-600 mb-1">
+                You're about to cancel:
+              </Text>
+              <Text className="font-semibold text-gray-900 mb-4">
+                {serviceToCancel?.service} on {serviceToCancel?.date}
+              </Text>
+              
+              <View className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-5">
+                <View className="flex-row">
+                  <MaterialIcons name="info-outline" size={16} color="#F59E0B" className="mr-2 mt-0.5" />
+                  <Text className="text-amber-800 text-sm flex-1">
+                    Cancellations within 24 hours may be subject to a fee. Please review our cancellation policy.
+                  </Text>
+                </View>
+              </View>
+              
+              <View className="flex-row justify-between space-x-3">
+                <TouchableOpacity 
+                  className="flex-1 bg-white border border-gray-300 rounded-xl py-3 items-center"
+                  onPress={closeModal}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-gray-700 font-medium">Go Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  className="flex-1 bg-red-500 rounded-xl py-3 items-center"
+                  onPress={handleCancelConfirm}
+                  activeOpacity={0.8}
+                >
+                  <Text className="text-white font-medium">Confirm</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      )}
     </View>
   );
 };
@@ -358,44 +489,23 @@ const QuickActions = ({ onActionPress }) => {
       id: '1',
       icon: <MaterialIcons name="content-paste" size={24} color="#10B981" />,
       title: 'Request Estimate',
-      screen: 'Estimate',
+      screen: 'RequestEstimateScreen',
       color: 'bg-emerald-100'
     },
     {
       id: '2',
       icon: <MaterialIcons name="event" size={24} color="#3B82F6" />,
       title: 'Book Service',
-      screen: 'Booking',
+      screen: 'Services',
       color: 'bg-blue-100'
     },
     {
       id: '3',
       icon: <MaterialIcons name="collections" size={24} color="#F59E0B" />,
       title: 'Gallery',
-      screen: 'Schedule',
+      screen: 'Gallery',
       color: 'bg-amber-100'
     },
-    // {
-    //   id: '4',
-    //   icon: <MaterialIcons name="account-balance-wallet" size={24} color="#8B5CF6" />,
-    //   title: 'Make Payment',
-    //   screen: 'Payment',
-    //   color: 'bg-purple-100'
-    // },
-    // {
-    //   id: '5',
-    //   icon: <MaterialIcons name="chat" size={24} color="#EC4899" />,
-    //   title: 'Contact Support',
-    //   screen: 'Support',
-    //   color: 'bg-pink-100'
-    // },
-    // {
-    //   id: '6',
-    //   icon: <MaterialIcons name="call" size={24} color="#EF4444" />,
-    //   title: 'Emergency Call',
-    //   screen: 'Emergency',
-    //   color: 'bg-red-100'
-    // },
   ];
 
   return (
@@ -451,7 +561,7 @@ const SeasonalServices = ({ onServicePress }) => {
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-xl font-bold text-gray-900">Popular Services</Text>
         <TouchableOpacity 
-          onPress={() => onServicePress('ServiceList')}
+          onPress={() => onServicePress('Services')}
           className="flex-row items-center"
         >
           <Text className="text-emerald-600 text-sm font-medium">View All</Text>
@@ -485,10 +595,8 @@ const SeasonalServices = ({ onServicePress }) => {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingRight: 16 }}
         renderItem={({ item }) => (
-          <TouchableOpacity 
+          <View 
             className="w-64 rounded-xl overflow-hidden mr-4 bg-white"
-            onPress={() => onServicePress('ServiceDetails', { service: item })}
-            activeOpacity={0.8}
             style={{
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 1 },
@@ -520,15 +628,9 @@ const SeasonalServices = ({ onServicePress }) => {
               
               <View className="flex-row justify-between items-center mt-4">
                 <Text className="text-emerald-600 font-bold text-base">{item.price}</Text>
-                <TouchableOpacity 
-                  className="bg-emerald-500 px-3 py-2 rounded-full"
-                  onPress={() => onServicePress('Booking', { service: item })}
-                >
-                  <Text className="text-white text-xs font-medium">Book Now</Text>
-                </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
         )}
       />
     </View>
@@ -708,7 +810,13 @@ const HomeScreen = () => {
   };
   
   const handleActionPress = (screen, params) => {
-    navigation.navigate(screen, params);
+    if (screen === 'AllServices') {
+      navigation.navigate('AllServices', { 
+        services: servicesData
+      });
+    } else {
+      navigation.navigate(screen, params);
+    }
   };
   
   const handleReviewPress = (screen, params) => {
@@ -717,8 +825,28 @@ const HomeScreen = () => {
 
   return (
     <View className="flex-1 bg-gray-50">
+      {/* Fixed Tenant Header */}
+      <View className="absolute top-0 left-0 right-0 z-50 pt-10 px-6 pb-3 bg-white shadow-sm" style={styles.fixedHeader}>
+        <View className="flex-row items-center">
+          <View className="bg-white p-1 rounded-full shadow-lg" style={styles.logoShadow}>
+            <Image
+              source={{ uri: tenantInfo.logo }}
+              className="w-10 h-10 rounded-full border-2 border-white"
+            />
+          </View>
+          <View className="ml-3">
+            <Text className="text-gray-900 font-bold text-lg">{tenantInfo.name}</Text>
+            <Text className="text-emerald-600 text-xs">{tenantInfo.slogan}</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Scrollable Content */}
       <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ 
+          paddingTop: Platform.OS === 'ios' ? 90 : 80, // Adjust based on header height
+          paddingBottom: 120 
+        }}
         scrollEventThrottle={16}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -738,5 +866,27 @@ const HomeScreen = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  fixedHeader: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    paddingTop: 40,  
+    paddingBottom: 20,  
+    height: 95  
+  },
+  logoShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3
+  },
+});
 
 export default HomeScreen;
