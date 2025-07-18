@@ -401,27 +401,34 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import ServiceStack from './ServiceStack';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../Screens/home';
 import ProfileScreen from '../Screens/ProfileScreen';
 import PaymentScreen from '../Screens/PaymentScreen';
 import ServicesScreen from '../Screens/ServicesScreen';
-import BookingScreen from '../Screens/bookingScreen';
+import DashboardScreen from '../Screens/DashboardScreen';
 import AllServicesScreen from '../Screens/AllServicesScreen';
 import RequestEstimateScreen from '../Screens/RequestEstimateScreen';
 import MyEstimatesScreen from '../Screens/MyEstimateScreen';
 import EstimateDetailScreen from '../Screens/EstimateDetailScreen';
 import Gallery from '../Screens/Gallery';
 import LoginScreen from '../Screens/login';
-import DateTimeSelectionScreen from '../Screens/DateTimeSelectionScreen';
-import BookingConfirmationScreen from '../Screens/BookingConfirmationScreen';
+
+import EditProfileScreen from '../Screens/EditProfile';
 import RescheduleScreen from '../Screens/Reschedule';
 import PortfolioScreen from '../Screens/Portfolio';
+import PortfolioDetailScreen from '../Screens/PortfolioDetailScreen'
 import PrivacyPolicy from '../Screens/PrivacyPolicy';
 import HelpSupport from '../Screens/HelpSupport';
+import TermsOfService from '../Screens/TermsOfService';
+import AppointmentList from '../Screens/AppointmentList';
+
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+
+const PortfolioStack = createNativeStackNavigator();
 
 function HomeStackScreen() {
   return (
@@ -470,20 +477,26 @@ function HomeStackScreen() {
         component={LoginScreen} 
         options={{ headerShown: false }}
       />
-      <HomeStack.Screen 
-        name="DateTimeSelection" 
-        component={DateTimeSelectionScreen} 
-        options={{ title: 'Select Date & Time' }}
-      />
+      
       <HomeStack.Screen 
         name="Reschedule" 
         component={RescheduleScreen} 
         options={{ title: 'Reschedule Service' }}
       />
       <HomeStack.Screen 
-        name="BookingConfirmation" 
-        component={BookingConfirmationScreen}
-        options={{ title: 'Booking Confirmation', headerLeft: null }}
+        name="EditProfile" 
+        component={EditProfileScreen}
+        options={{ title: 'Edit Profile', headerLeft: null }}
+      />
+       <HomeStack.Screen 
+        name="AppointmentList" 
+        component={AppointmentList}
+        options={{ title: 'My Appointments', headerLeft: null }}
+      />
+      <HomeStack.Screen 
+        name="PortfolioDetail" 
+        component={PortfolioDetailScreen}
+        options={{ title: 'Portfolio Details', headerLeft: null }}
       />
       <HomeStack.Screen 
         name="PrivacyPolicy" 
@@ -499,11 +512,34 @@ function HomeStackScreen() {
         }}
       />
       <HomeStack.Screen 
+        name="TermsOfService" 
+        component={TermsOfService}
+        options={{ title: 'Terms Of Service' }}
+      />
+      <HomeStack.Screen 
         name="Payment" 
         component={PaymentScreen}
         options={{ title: 'Payment' }}
       />
     </HomeStack.Navigator>
+  );
+}
+
+
+function PortfolioStackScreen() {
+  return (
+    <PortfolioStack.Navigator>
+      <PortfolioStack.Screen 
+        name="PortfolioMain" 
+        component={PortfolioScreen} 
+        options={{ headerShown: false }}
+      />
+      <PortfolioStack.Screen 
+        name="PortfolioDetail" 
+        component={PortfolioDetailScreen}
+        options={{ title: 'Portfolio Details' }}
+      />
+    </PortfolioStack.Navigator>
   );
 }
 
@@ -548,23 +584,30 @@ const BottomNav = () => {
           title: 'Home'
         }}
       />
-      <Tab.Screen 
+      {/* <Tab.Screen 
         name="Services" 
         component={ServicesScreen}
         options={{
           title: 'Services'
         }}
+      /> */}
+
+
+      <Tab.Screen 
+        name="Services" 
+        component={ServiceStack}
+        options={{ headerShown: false }}
       />
       <Tab.Screen 
         name="Dashboard" 
-        component={BookingScreen}
+        component={DashboardScreen}
         options={{
           title: 'Dashboard'
         }}
       />
       <Tab.Screen 
         name="Portfolio" 
-        component={PortfolioScreen}
+        component={PortfolioStackScreen}
         options={{
           title: 'Portfolio'
         }}

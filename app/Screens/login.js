@@ -504,7 +504,7 @@ const loginSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const API_BASE_URL = 'http://your-api-base-url.com'; // Replace with your actual API base URL
+
 
 const LoginPage = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -624,7 +624,7 @@ const LoginPage = ({ navigation }) => {
   setIsLoading(true);
   try {
     const response = await axios.post(
-      "http://192.168.0.110:5000/api/v1/auth/login",
+      `${TENANT_CONFIG.API_BASE_URL}/auth/login`,
       {
         email: data.email,
         password: data.password
@@ -666,7 +666,7 @@ const LoginPage = ({ navigation }) => {
 
     const navigationMap = {
       'superAdmin': 'AdminDashboard',
-      'admin': 'AdminHome',
+       'tenantAdmin': 'TenantHome',
       'customer': 'Home'
     };
     
@@ -678,12 +678,22 @@ const LoginPage = ({ navigation }) => {
 
     let errorMessage = 'Login failed. Please try again.';
     
-    if (error.response) {
-      errorMessage = error.response.data?.message || 
-                    error.response.statusText || 
-                    `Server error (${error.response.status})`;
-    } else if (error.message) {
-      errorMessage = error.message;
+    // if (error.response) {
+    //   errorMessage = error.response.data?.message || 
+    //                 error.response.statusText || 
+    //                 `Server error (${error.response.status})`;
+    // } else if (error.message) {
+    //   errorMessage = error.message;
+    // }
+
+     if (error.response) {
+      // Specifically check for 401 Unauthorized status
+      if (error.response.status === 401) {
+        errorMessage = 'Unauthorized User';
+      } else {
+        errorMessage = error.response.data?.message || 
+                      `Server error (${error.response.status})`;
+      }
     }
 
     Alert.alert('Login Error', errorMessage);
@@ -695,7 +705,7 @@ const LoginPage = ({ navigation }) => {
   const handleSocialLoginSuccess = async (provider, token) => {
   setSocialLoading(provider);
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/v1/auth/social-login`, {
+    const response = await axios.post(`${TENANT_CONFIG.API_BASE_URL}/auth/social-login`, {
       provider,
       token
     }, {
@@ -710,7 +720,7 @@ const LoginPage = ({ navigation }) => {
 
     const navigationMap = {
       'superAdmin': 'AdminDashboard',
-      'admin': 'AdminHome',
+      'tenantAdmin': 'TenantHome',
       'customer': 'Home'
     };
     

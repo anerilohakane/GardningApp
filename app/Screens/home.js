@@ -1,20 +1,81 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Dimensions, FlatList, Animated, Platform, Linking } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Dimensions, FlatList, Animated, Platform, Linking,ActivityIndicator } from 'react-native';
 import { FontAwesome, MaterialIcons, Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { TENANT_CONFIG } from '../config/constants';
+
 
 const { width, height } = Dimensions.get('window');
 
 // Tenant information
 const tenantInfo = {
-  name: "isaac-gomes-ernandes",
-  logo: "https://i.pinimg.com/736x/57/9a/e4/579ae4d3f89d19226bf16ce52779bd0c.jpg",
+  // name: "isaac-gomes-ernandes",
+  // logo: "https://i.pinimg.com/736x/57/9a/e4/579ae4d3f89d19226bf16ce52779bd0c.jpg",
   slogan: "Premium Landscaping Services"
 };
 
 // Enhanced mock data
+const defaultServicesData = [
+  {
+    id: '1',
+    title: 'Premium Lawn Care',
+    image: 'https://i.pinimg.com/736x/8d/f6/f1/8df6f12adc1bc5c0117aae821b2e9b3e.jpg',
+    price: '$99',
+    description: 'Complete lawn maintenance package with edging and trimming',
+    rating: 4.8,
+    reviews: 124,
+    duration: '2 hours',
+    category: 'Full Service'
+  },
+  {
+    id: '2',
+    title: 'Spring Cleanup',
+    image: 'https://images.unsplash.com/photo-1558904541-efa843a96f01?auto=format&fit=crop&q=80&w=800',
+    price: '$149',
+    description: 'Get your yard ready for spring with debris removal',
+    rating: 4.9,
+    reviews: 87,
+    duration: '3 hours',
+    category: 'Seasonal'
+  },
+  {
+    id: '3',
+    title: 'Aeration Service',
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&q=80&w=800',
+    price: '$79',
+    description: 'Improve your lawn health with core aeration',
+    rating: 4.7,
+    reviews: 56,
+    duration: '1.5 hours',
+    category: 'Lawn Health'
+  },
+  {
+    id: '4',
+    title: 'Fertilization',
+    image: 'https://i.pinimg.com/736x/39/aa/ee/39aaee1425200aee0ccfe8505dd9d096.jpg',
+    price: '$59',
+    description: 'Professional-grade nutrient boost for your lawn',
+    rating: 4.6,
+    reviews: 42,
+    duration: '1 hour',
+    category: 'Lawn Health'
+  },
+  {
+    id: '5',
+    title: 'Landscape Design',
+    image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800',
+    price: '$299',
+    description: 'Custom landscape design for your property',
+    rating: 4.9,
+    reviews: 63,
+    duration: '4 hours',
+    category: 'Premium'
+  },
+];
+
 const servicesData = [
   {
     id: '1',
@@ -136,10 +197,13 @@ const upcomingServices = [
 
 const serviceCategories = [
   { id: 'all', name: 'All Services' },
-  { id: 'full', name: 'Full Service' },
+  { id: 'landscaping design', name: 'Landscaping Design' },
   { id: 'seasonal', name: 'Seasonal' },
-  { id: 'health', name: 'Lawn Health' },
-  { id: 'premium', name: 'Premium' },
+  { id: 'gardening', name: 'Gardening' },
+  { id: 'lawn maintenance', name: 'Lawn Maintenance' },
+  { id: 'tree service', name: 'Tree Service' },
+  { id: 'irrigation', name: 'Irrigation' },
+  { id: 'other', name: 'Other' },
 ];
 
 const Header = ({ scrollY }) => {
@@ -212,272 +276,187 @@ const Header = ({ scrollY }) => {
   );
 };
 
-const NextService = ({ services, onPress }) => {
-  const [activeTab, setActiveTab] = useState('upcoming');
-  const [expandedService, setExpandedService] = useState(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [serviceToCancel, setServiceToCancel] = useState(null);
+const ServicesList = ({ services, loading, onBookNow }) => {
+  const [activeCategory, setActiveCategory] = useState('all');
   
-  const modalScale = useRef(new Animated.Value(0)).current;
-  const modalOpacity = useRef(new Animated.Value(0)).current;
+  const filteredServices = activeCategory === 'all' 
+    ? services 
+    : services.filter(service => 
+        service.category?.toLowerCase().includes(activeCategory.toLowerCase()) ||
+        (service.category === 'Landscaping Design' && activeCategory === 'landscaping design') ||
+        (service.category === 'Seasonal' && activeCategory === 'seasonal') ||
+        (service.category === 'Gardening' && activeCategory === 'gardening') ||
+        (service.category === 'Lawn Maintenance' && activeCategory === 'lawn maintenance') ||
+         (service.category === 'Tree Service' && activeCategory === 'tree service') ||
+          (service.category === 'Irrigation' && activeCategory === 'irrigation') ||
+           (service.category === 'Other' && activeCategory === 'other')
+      );
 
-  const toggleExpand = (id) => {
-    setExpandedService(expandedService === id ? null : id);
-  };
-
-  const openModal = (serviceId) => {
-    const service = services.find(s => s.id === serviceId);
-    setServiceToCancel(service);
-    
-    // Reset animations
-    modalScale.setValue(0);
-    modalOpacity.setValue(0);
-    
-    setShowCancelModal(true);
-    
-    // Animate in
-    Animated.parallel([
-      Animated.spring(modalScale, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 10,
-        bounciness: 6
-      }),
-      Animated.timing(modalOpacity, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true
-      })
-    ]).start();
-  };
-
-  const closeModal = () => {
-    Animated.parallel([
-      Animated.spring(modalScale, {
-        toValue: 0,
-        useNativeDriver: true,
-        speed: 10
-      }),
-      Animated.timing(modalOpacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true
-      })
-    ]).start(() => setShowCancelModal(false));
-  };
-
-  const handleCancelConfirm = () => {
-    closeModal();
-    // Actual cancellation logic would go here
-    console.log('Cancelling service:', serviceToCancel);
-  };
-
-  const handleServiceAction = (action, serviceId) => {
-    if (action === 'cancel') {
-      openModal(serviceId);
-    } else if (action === 'reschedule') {
-      const service = services.find(s => s.id === serviceId);
-      onPress('Reschedule', { service });
-    } else if (action === 'all-services') {
-      onPress('AllServices');
-    } else {
-      onPress(action);
+  const getCategoryColor = (category) => {
+    switch(category) {
+      case 'Landscaping Design': return 'bg-blue-500';       // Blue
+    case 'Seasonal': return 'bg-orange-500';              // Orange
+    case 'Gardening': return 'bg-green-500';              // Green
+    case 'Lawn Maintenance': return 'bg-emerald-500';     // Emerald
+    case 'Tree Service': return 'bg-yellow-500';          // Yellow
+    case 'Irrigation': return 'bg-indigo-500';            // Indigo
+    case 'Other': return 'bg-pink-500';                   // Pink
+    default: return 'bg-gray-500';                        // Default gray
     }
   };
+
+  if (loading) {
+    return (
+      <View className="bg-white rounded-2xl mx-4 my-2 p-5 shadow-sm" style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.035,
+        shadowRadius: 3,
+        elevation: 3
+      }}>
+        <Text className="text-2xl font-extrabold text-gray-900 mb-6">Our Premium Services</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-2">
+          {[1, 2, 3].map((_, index) => (
+            <View key={index} className="w-64 bg-white rounded-2xl mr-4 p-4" style={styles.loadingCard}>
+              <View className="w-full h-32 bg-gray-100 rounded-xl mb-4" />
+              <View className="w-3/4 h-4 bg-gray-100 rounded mb-2" />
+              <View className="w-1/2 h-3 bg-gray-100 rounded mb-4" />
+              <View className="w-full h-8 bg-gray-100 rounded-lg" />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (!services || services.length === 0) {
+    return (
+      <View className="bg-white rounded-2xl mx-4 my-2 p-5 shadow-sm" style={{
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.035,
+        shadowRadius: 3,
+        elevation: 3
+      }}>
+        <Text className="text-2xl font-extrabold text-gray-900 mb-6">Our Premium Services</Text>
+        <View className="bg-white rounded-2xl p-8 items-center justify-center">
+          <MaterialIcons name="error-outline" size={40} color="#9CA3AF" />
+          <Text className="text-gray-500 mt-4 text-center">No services available at the moment</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="bg-white rounded-2xl mx-4 my-2 p-5 shadow-sm" style={{
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
+      shadowOpacity: 0.035,
+      shadowRadius: 3,
       elevation: 3
     }}>
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-xl font-bold text-gray-900">My Services</Text>
-        <TouchableOpacity 
-          onPress={() => handleServiceAction('all-services')}
-          className="flex-row items-center"
-        >
-          <Text className="text-emerald-600 text-sm font-medium">See All</Text>
-          <MaterialIcons name="chevron-right" size={16} color="#059669" />
-        </TouchableOpacity>
-      </View>
-      
-      <View className="flex-row border-b border-gray-100 mb-4">
-        <TouchableOpacity 
-          className={`pb-3 px-4 ${activeTab === 'upcoming' ? 'border-b-2 border-emerald-500' : ''}`}
-          onPress={() => setActiveTab('upcoming')}
-        >
-          <Text className={`font-medium ${activeTab === 'upcoming' ? 'text-emerald-600 font-semibold' : 'text-gray-500'}`}>
-            Upcoming
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          className={`pb-3 px-4 ${activeTab === 'history' ? 'border-b-2 border-emerald-500' : ''}`}
-          onPress={() => setActiveTab('history')}
-        >
-          <Text className={`font-medium ${activeTab === 'history' ? 'text-emerald-600 font-semibold' : 'text-gray-500'}`}>
-            History
-          </Text>
-        </TouchableOpacity>
-      </View>
-      
-      {activeTab === 'upcoming' ? (
+      <View className="flex-row justify-between items-center mb-6">
         <View>
-          {upcomingServices.map((service) => (
-            <View 
-              key={service.id}
-              className="bg-gray-50 rounded-xl p-3 mb-3 overflow-hidden"
-            >
-              <TouchableOpacity 
-                className="flex-row items-center"
-                onPress={() => toggleExpand(service.id)}
-              >
-                <Image
-                  source={{ uri: service.image }}
-                  className="w-12 h-12 rounded-lg"
-                />
-                <View className="flex-1 ml-3">
-                  <View className="flex-row justify-between items-center">
-                    <Text className="font-semibold text-gray-900">{service.service}</Text>
-                    <View className={`px-2 py-1 rounded-full ${service.status === 'confirmed' ? 'bg-emerald-100' : 'bg-blue-100'}`}>
-                      <Text className={`text-xs font-medium ${service.status === 'confirmed' ? 'text-emerald-800' : 'text-blue-800'}`}>
-                        {service.status === 'confirmed' ? 'Confirmed' : 'Scheduled'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="flex-row items-center mt-1">
-                    <Feather name="clock" size={14} color="#6B7280" />
-                    <Text className="text-gray-500 text-xs ml-1">{service.date} • {service.time}</Text>
-                  </View>
-                </View>
-                <MaterialIcons 
-                  name={expandedService === service.id ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
-                  size={18} 
-                  color="#6B7280" 
-                />
-              </TouchableOpacity>
-              
-              {expandedService === service.id && (
-                <View className="mt-3 pt-3 border-t border-gray-100">
-                  <View className="flex-row items-center mb-2">
-                    <MaterialIcons name="location-on" size={14} color="#6B7280" />
-                    <Text className="text-gray-700 text-xs ml-1">{service.address}</Text>
-                  </View>
-                  <View className="flex-row items-center mb-2">
-                    <Feather name="clock" size={14} color="#6B7280" />
-                    <Text className="text-gray-700 text-xs ml-1">{service.duration} service</Text>
-                  </View>
-                  <View className="flex-row items-center">
-                    <View className="w-4 h-4 rounded-full bg-emerald-500 justify-center items-center mr-1">
-                      <Text className="text-white text-xs" style={{ fontSize: 8 }}>T</Text>
-                    </View>
-                    <Text className="text-gray-700 text-xs ml-1">Assigned to {service.team}</Text>
-                  </View>
-                  
-                  <View className="flex-row mt-4">
-                    <TouchableOpacity 
-                      className="flex-1 bg-white border border-emerald-500 rounded-lg py-2 items-center mr-2"
-                      onPress={() => handleServiceAction('reschedule', service.id)}
-                    >
-                      <Text className="text-emerald-600 text-sm font-medium">Reschedule</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      className="flex-1 bg-white border  border-red-500 rounded-lg py-2 items-center"
-                      onPress={() => handleServiceAction('cancel', service.id)}
-                    >
-                      <Text className="text-red-500 text-sm font-medium">Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </View>
-          ))}
+          <Text className="text-2xl font-extrabold text-gray-900">Our Premium Services</Text>
+          <Text className="text-emerald-500 text-sm mt-1">Swipe to explore our services</Text>
+        </View>
+      </View>
+
+      {/* Category Filter Tabs */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        className="mb-4 pl-2"
+        contentContainerStyle={{ paddingRight: 20 }}
+      >
+        {serviceCategories.map(category => (
+          <TouchableOpacity
+            key={category.id}
+            onPress={() => setActiveCategory(category.id)}
+            className={`mr-2 px-3 py-1 rounded-full ${activeCategory === category.id ? 'bg-emerald-500' : 'bg-gray-100'}`}
+          >
+            <Text className={`text-sm ${activeCategory === category.id ? 'text-white font-medium' : 'text-gray-700'}`}>
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {filteredServices.length === 0 ? (
+        <View className="bg-white rounded-2xl p-8 items-center justify-center">
+          <MaterialCommunityIcons name="magnify-close" size={40} color="#9CA3AF" />
+          <Text className="text-gray-500 mt-4 text-center">
+            No services available for "{serviceCategories.find(c => c.id === activeCategory)?.name || 'this category'}"
+          </Text>
+          <TouchableOpacity
+            onPress={() => setActiveCategory('all')}
+            className="mt-4 bg-emerald-100 px-4 py-2 rounded-lg"
+          >
+            <Text className="text-emerald-800 font-medium">View All Services</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-        <View className="items-center justify-center py-8">
-          <Image 
-            source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4076/4076478.png' }} 
-            className="w-24 h-24 opacity-30 mb-4"
-          />
-          <Text className="text-gray-400 font-medium">No past services yet</Text>
-          <Text className="text-gray-300 text-sm mt-1">Your completed services will appear here</Text>
-        </View>
-      )}
-
-      {/* Enhanced Modal */}
-      {showCancelModal && (
-        <View className="absolute inset-0 justify-center items-center z-50">
-          {/* Backdrop */}
-          <Animated.View 
-            className="absolute inset-0 bg-black"
-            style={{ opacity: modalOpacity.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 0.5]
-            })}}
-          />
-          
-          {/* Modal Content */}
-          <Animated.View 
-            className="bg-white rounded-2xl w-11/12 max-w-md overflow-hidden"
-            style={{
-              transform: [{ scale: modalScale }],
-              opacity: modalOpacity,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 20,
-              elevation: 10
-            }}
-          >
-            {/* Modal Header */}
-            <View className="bg-red-50 px-6 py-4 border-b border-red-100">
-              <View className="flex-row items-center">
-                <View className="bg-red-100 p-2 rounded-full mr-3">
-                  <MaterialIcons name="warning" size={20} color="#EF4444" />
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          className="pl-2"
+          contentContainerStyle={{ paddingRight: 20 }}
+        >
+          {filteredServices.map((item) => (
+            <View 
+              key={item._id || item.id}
+              className="w-64 bg-white rounded-2xl mr-4 overflow-hidden"
+              style={styles.serviceCard}
+            >
+              <View className="relative">
+                <Image
+                  source={{ uri: (typeof item.image === 'string' ? item.image : item.image?.url) || 'https://via.placeholder.com/150' }}
+                  className="w-full h-40"
+                  style={{ resizeMode: 'cover' }}
+                />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.7)', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  className="absolute w-full h-1/3 top-0"
+                />
+                <View className="absolute top-3 left-3 bg-white bg-opacity-90 rounded-full px-2 py-1 flex-row items-center">
+                  <FontAwesome name="star" size={12} color="#F59E0B" />
+                  <Text className="text-gray-800 text-xs font-bold ml-1">{item.rating || 4.5}</Text>
                 </View>
-                <Text className="text-lg font-bold text-gray-900">Cancel Service</Text>
-              </View>
-            </View>
-            
-            {/* Modal Body */}
-            <View className="p-6">
-              <Text className="text-gray-600 mb-1">
-                You're about to cancel:
-              </Text>
-              <Text className="font-semibold text-gray-900 mb-4">
-                {serviceToCancel?.service} on {serviceToCancel?.date}
-              </Text>
-              
-              <View className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-5">
-                <View className="flex-row">
-                  <MaterialIcons name="info-outline" size={16} color="#F59E0B" className="mr-2 mt-0.5" />
-                  <Text className="text-amber-800 text-sm flex-1">
-                    Cancellations within 24 hours may be subject to a fee. Please review our cancellation policy.
-                  </Text>
-                </View>
+                {item.category && (
+                  <View className={`absolute bottom-3 left-3 ${getCategoryColor(item.category)} px-2 py-1 rounded-full`}>
+                    <Text className="text-white text-xs font-medium">{item.category}</Text>
+                  </View>
+                )}
               </View>
               
-              <View className="flex-row justify-between space-x-3">
-                <TouchableOpacity 
-                  className="flex-1 bg-white border border-gray-300 rounded-xl py-3 items-center"
-                  onPress={closeModal}
-                  activeOpacity={0.7}
-                >
-                  <Text className="text-gray-700 font-medium">Go Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  className="flex-1 bg-red-500 rounded-xl py-3 items-center"
-                  onPress={handleCancelConfirm}
-                  activeOpacity={0.8}
-                >
-                  <Text className="text-white font-medium">Confirm</Text>
-                </TouchableOpacity>
+              <View className="p-4">
+                <Text className="font-bold text-gray-900 text-lg mb-1">{item.name || item.title}</Text>
+                <Text className="text-gray-500 text-sm mb-3" numberOfLines={2}>{item.description}</Text>
+                
+                <View className="flex-row items-center mb-4">
+                  <View className="flex-row items-center">
+                    <MaterialCommunityIcons name="clock-outline" size={14} color="#6B7280" />
+                    <Text className="text-gray-500 text-xs ml-1">{item.duration || '1 hour'}</Text>
+                  </View>
+                </View>
+                
+                <View className="flex-row-reverse">
+                  <TouchableOpacity 
+                    className="bg-emerald-500 px-4 py-2 rounded-lg flex-row items-center justify-center"
+                    style={styles.greenButton}
+                   onPress={() => onBookNow('BookService', item)}
+                    activeOpacity={0.8}
+                  >
+                    <Text className="text-white text-sm font-semibold">Book Now</Text>
+                    <MaterialIcons name="arrow-forward" size={16} color="white" style={{ marginLeft: 8 }} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </Animated.View>
-        </View>
+          ))}
+        </ScrollView>
       )}
     </View>
   );
@@ -541,101 +520,101 @@ const QuickActions = ({ onActionPress }) => {
   );
 };
 
-const SeasonalServices = ({ onServicePress }) => {
-  const [activeCategory, setActiveCategory] = useState('all');
+// const SeasonalServices = ({ onServicePress }) => {
+//   const [activeCategory, setActiveCategory] = useState('all');
   
-  const filteredServices = activeCategory === 'all' 
-    ? servicesData 
-    : servicesData.filter(service => 
-        service.category.toLowerCase().includes(activeCategory.toLowerCase())
-      );
+//   const filteredServices = activeCategory === 'all' 
+//     ? servicesData 
+//     : servicesData.filter(service => 
+//         service.category.toLowerCase().includes(activeCategory.toLowerCase())
+//       );
 
-  return (
-    <View className="bg-white rounded-2xl mx-4 my-2 p-5 shadow-sm" style={{
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.035,
-      shadowRadius: 3,
-      elevation: 3
-    }}>
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-xl font-bold text-gray-900">Popular Services</Text>
-        <TouchableOpacity 
-          onPress={() => onServicePress('Services')}
-          className="flex-row items-center"
-        >
-          <Text className="text-emerald-600 text-sm font-medium">View All</Text>
-          <MaterialIcons name="chevron-right" size={16} color="#059669" />
-        </TouchableOpacity>
-      </View>
+//   return (
+//     <View className="bg-white rounded-2xl mx-4 my-2 p-5 shadow-sm" style={{
+//       shadowColor: '#000',
+//       shadowOffset: { width: 0, height: 2 },
+//       shadowOpacity: 0.035,
+//       shadowRadius: 3,
+//       elevation: 3
+//     }}>
+//       <View className="flex-row justify-between items-center mb-4">
+//         <Text className="text-xl font-bold text-gray-900">Popular Services</Text>
+//         <TouchableOpacity 
+//           onPress={() => onServicePress('Services')}
+//           className="flex-row items-center"
+//         >
+//           <Text className="text-emerald-600 text-sm font-medium">View All</Text>
+//           <MaterialIcons name="chevron-right" size={16} color="#059669" />
+//         </TouchableOpacity>
+//       </View>
       
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        className="mb-4"
-        contentContainerStyle={{ paddingRight: 20 }}
-      >
-        {serviceCategories.map(category => (
-          <TouchableOpacity
-            key={category.id}
-            onPress={() => setActiveCategory(category.id)}
-            className={`mr-2 px-3 py-1 rounded-full ${activeCategory === category.id ? 'bg-emerald-500' : 'bg-gray-100'}`}
-          >
-            <Text className={`text-sm ${activeCategory === category.id ? 'text-white font-medium' : 'text-gray-700'}`}>
-              {category.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+//       <ScrollView 
+//         horizontal 
+//         showsHorizontalScrollIndicator={false}
+//         className="mb-4"
+//         contentContainerStyle={{ paddingRight: 20 }}
+//       >
+//         {serviceCategories.map(category => (
+//           <TouchableOpacity
+//             key={category.id}
+//             onPress={() => setActiveCategory(category.id)}
+//             className={`mr-2 px-3 py-1 rounded-full ${activeCategory === category.id ? 'bg-emerald-500' : 'bg-gray-100'}`}
+//           >
+//             <Text className={`text-sm ${activeCategory === category.id ? 'text-white font-medium' : 'text-gray-700'}`}>
+//               {category.name}
+//             </Text>
+//           </TouchableOpacity>
+//         ))}
+//       </ScrollView>
       
-      <FlatList
-        data={filteredServices}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingRight: 16 }}
-        renderItem={({ item }) => (
-          <View 
-            className="w-64 rounded-xl overflow-hidden mr-4 bg-white"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.02,
-              shadowRadius: 2,
-              elevation: 0.5
-            }}
-          >
-            <Image
-              source={{ uri: item.image }}
-              className="w-full h-40"
-            />
-            <View className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm">
-              <FontAwesome name="star" size={16} color="#F59E0B" />
-            </View>
-            <View className="p-4">
-              <Text className="font-bold text-gray-900">{item.title}</Text>
-              <Text className="text-gray-500 text-xs mt-1">{item.description}</Text>
+//       <FlatList
+//         data={filteredServices}
+//         horizontal
+//         showsHorizontalScrollIndicator={false}
+//         keyExtractor={(item) => item.id}
+//         contentContainerStyle={{ paddingRight: 16 }}
+//         renderItem={({ item }) => (
+//           <View 
+//             className="w-64 rounded-xl overflow-hidden mr-4 bg-white"
+//             style={{
+//               shadowColor: '#000',
+//               shadowOffset: { width: 0, height: 1 },
+//               shadowOpacity: 0.02,
+//               shadowRadius: 2,
+//               elevation: 0.5
+//             }}
+//           >
+//             <Image
+//               source={{ uri: item.image }}
+//               className="w-full h-40"
+//             />
+//             <View className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm">
+//               <FontAwesome name="star" size={16} color="#F59E0B" />
+//             </View>
+//             <View className="p-4">
+//               <Text className="font-bold text-gray-900">{item.title}</Text>
+//               <Text className="text-gray-500 text-xs mt-1">{item.description}</Text>
               
-              <View className="flex-row items-center mt-3">
-                <View className="flex-row items-center">
-                  <FontAwesome name="star" size={14} color="#F59E0B" />
-                  <Text className="text-gray-700 text-xs ml-1">{item.rating}</Text>
-                  <Text className="text-gray-400 text-xs ml-1">({item.reviews})</Text>
-                </View>
-                <Text className="text-gray-400 text-xs mx-2">•</Text>
-                <Text className="text-gray-400 text-xs">{item.duration}</Text>
-              </View>
+//               <View className="flex-row items-center mt-3">
+//                 <View className="flex-row items-center">
+//                   <FontAwesome name="star" size={14} color="#F59E0B" />
+//                   <Text className="text-gray-700 text-xs ml-1">{item.rating}</Text>
+//                   <Text className="text-gray-400 text-xs ml-1">({item.reviews})</Text>
+//                 </View>
+//                 <Text className="text-gray-400 text-xs mx-2">•</Text>
+//                 <Text className="text-gray-400 text-xs">{item.duration}</Text>
+//               </View>
               
-              <View className="flex-row justify-between items-center mt-4">
-                <Text className="text-emerald-600 font-bold text-base">{item.price}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-      />
-    </View>
-  );
-};
+//               <View className="flex-row justify-between items-center mt-4">
+//                 <Text className="text-emerald-600 font-bold text-base">{item.price}</Text>
+//               </View>
+//             </View>
+//           </View>
+//         )}
+//       />
+//     </View>
+//   );
+// };
 
 const ReviewSection = ({ onReviewPress }) => {
   return (
@@ -648,13 +627,13 @@ const ReviewSection = ({ onReviewPress }) => {
     }}>
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-xl font-bold text-gray-900">Customer Stories</Text>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           onPress={() => onReviewPress('Reviews')}
           className="flex-row items-center"
         >
           <Text className="text-emerald-600 text-sm font-medium">See All</Text>
           <MaterialIcons name="chevron-right" size={16} color="#059669" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
       
       <FlatList
@@ -666,7 +645,7 @@ const ReviewSection = ({ onReviewPress }) => {
         renderItem={({ item }) => (
           <TouchableOpacity 
             className="w-80 rounded-xl overflow-hidden mr-4 bg-white"
-            onPress={() => onReviewPress('ReviewDetails', { review: item })}
+            // onPress={() => onReviewPress('ReviewDetails', { review: item })}
             activeOpacity={0.9}
             style={{
               shadowColor: '#000',
@@ -801,22 +780,127 @@ const ContactCard = ({ onActionPress }) => {
   );
 };
 
+
+const fetchTenantLogo = async () => {
+  try {
+    const response = await fetch(`${TENANT_CONFIG.API_BASE_URL}/logo`, {
+      headers: {
+        'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+        'X-Tenant-ID': TENANT_CONFIG.ID
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch tenant logo');
+    }
+    
+    const data = await response.json();
+    return data.data.url;
+  } catch (error) {
+    console.error('Error fetching tenant logo:', error);
+    return "https://i.pinimg.com/736x/57/9a/e4/579ae4d3f89d19226bf16ce52779bd0c.jpg"; // Fallback logo
+  }
+};
+
+
+const fetchServices = async () => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    const response = await fetch(`${TENANT_CONFIG.API_BASE_URL}/services`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Tenant-ID': TENANT_CONFIG.ID,
+        'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    return null; // Return null to indicate error
+  }
+};
+
 const HomeScreen = () => {
   const navigation = useNavigation();
   const scrollY = useRef(new Animated.Value(0)).current;
-  
-  const handleServicePress = (screen, params) => {
-    navigation.navigate(screen, params);
+  const [tenantData, setTenantData] = useState({
+    logo: "https://i.pinimg.com/736x/57/9a/e4/579ae4d3f89d19226bf16ce52779bd0c.jpg",
+    name: TENANT_CONFIG.SUBDOMAIN,
+    slogan: tenantInfo.slogan
+  });
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Load tenant logo
+        const logoUrl = await fetchTenantLogo();
+        setTenantData(prev => ({
+          ...prev,
+          logo: logoUrl || prev.logo,
+          name: formatSubdomain(TENANT_CONFIG.SUBDOMAIN)
+        }));
+
+        // Load services
+        setLoading(true);
+        const servicesData = await fetchServices();
+        setServices(servicesData || defaultServicesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        setServices(defaultServicesData);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const formatSubdomain = (subdomain) => {
+    return subdomain
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
   
+ const handleBookNow = (screen, item) => {
+  if (screen === 'BookService') {
+    // Normalize the service object
+    const service = {
+      id: item.id || item._id,
+      name: item.name || item.title,
+      image: item.image,
+      price: item.price,
+      description: item.description,
+      rating: item.rating,
+      reviews: item.reviews,
+      duration: item.duration,
+      category: item.category,
+      // add any other fields you need
+    };
+    navigation.navigate('Services', {
+      screen: 'BookService',
+      params: { service }
+    });
+  } else {
+    navigation.navigate(screen, item);
+  }
+};
+  
   const handleActionPress = (screen, params) => {
-    if (screen === 'AllServices') {
-      navigation.navigate('AllServices', { 
-        services: servicesData
-      });
-    } else {
-      navigation.navigate(screen, params);
-    }
+    navigation.navigate(screen, params);
   };
   
   const handleReviewPress = (screen, params) => {
@@ -830,13 +914,13 @@ const HomeScreen = () => {
         <View className="flex-row items-center">
           <View className="bg-white p-1 rounded-full shadow-lg" style={styles.logoShadow}>
             <Image
-              source={{ uri: tenantInfo.logo }}
+              source={{ uri: tenantData.logo }}
               className="w-10 h-10 rounded-full border-2 border-white"
             />
           </View>
           <View className="ml-3">
-            <Text className="text-gray-900 font-bold text-lg">{tenantInfo.name}</Text>
-            <Text className="text-emerald-600 text-xs">{tenantInfo.slogan}</Text>
+            <Text className="text-gray-900 font-bold text-lg">{tenantData.name}</Text>
+            <Text className="text-emerald-600 text-xs">{tenantData.slogan}</Text>
           </View>
         </View>
       </View>
@@ -844,7 +928,7 @@ const HomeScreen = () => {
       {/* Scrollable Content */}
       <Animated.ScrollView
         contentContainerStyle={{ 
-          paddingTop: Platform.OS === 'ios' ? 90 : 80, // Adjust based on header height
+          paddingTop: Platform.OS === 'ios' ? 90 : 80,
           paddingBottom: 120 
         }}
         scrollEventThrottle={16}
@@ -854,12 +938,17 @@ const HomeScreen = () => {
         )}
       >
         <Header scrollY={scrollY} />
-        <NextService 
-          services={upcomingServices} 
-          onPress={handleActionPress} 
+        <ServicesList 
+          services={services} 
+          loading={loading}
+          onBookNow={handleBookNow} 
         />
         <QuickActions onActionPress={handleActionPress} />
-        <SeasonalServices onServicePress={handleServicePress} />
+        {/* <SeasonalServices 
+          services={services} 
+          loading={loading}
+          onServicePress={handleActionPress} 
+        /> */}
         <ReviewSection onReviewPress={handleReviewPress} />
         <ContactCard onActionPress={handleActionPress} />
       </Animated.ScrollView>
@@ -887,6 +976,38 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3
   },
+   loadingCard: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#f3f4f6'
+  },
+  serviceCard: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4
+  },
+  gradientButton: {
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  greenButton: {
+    backgroundColor: '#10B981',
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 100,
+  }
 });
 
 export default HomeScreen;

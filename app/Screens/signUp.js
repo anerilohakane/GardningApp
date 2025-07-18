@@ -547,7 +547,7 @@ const SignPage = ({ navigation }) => {
   const [slideAnim] = useState(new Animated.Value(height * 0.3));
   const [roles, setRoles] = useState([
     { label: 'Customer', value: 'customer' },
-    { label: 'Admin', value: 'admin' },
+    { label: 'TenantAdmin', value: 'tenantAdmin' },
     // Add other roles as needed
   ]);
 
@@ -592,7 +592,7 @@ const handleRegister = async (data) => {
       })
     };
 
-    const response = await fetch("http://192.168.0.110:5000/api/v1/auth/register", {
+    const response = await fetch(`${TENANT_CONFIG.API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: headers,
       body: JSON.stringify(data),
