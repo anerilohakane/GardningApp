@@ -16,29 +16,29 @@ const TenantDashboardScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [recentServices, setRecentServices] = useState([]);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
+  // useEffect(() => {
+  //   const fetchDashboardData = async () => {
+  //     try {
+  //       const token = await AsyncStorage.getItem('token');
         
-        const response = await axios.get('http://192.168.0.120:5000/api/v1/tenant/dashboard', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Tenant-ID': TENANT_CONFIG.ID
-          }
-        });
+  //       const response = await axios.get('http://192.168.0.120:5000/api/v1/tenant/dashboard', {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'X-Tenant-ID': TENANT_CONFIG.ID
+  //         }
+  //       });
 
-        setStats(response.data.stats);
-        setRecentServices(response.data.recentServices);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  //       setStats(response.data.stats);
+  //       setRecentServices(response.data.recentServices);
+  //     } catch (error) {
+  //       console.error('Error fetching dashboard data:', error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
 
-    fetchDashboardData();
-  }, []);
+  //   fetchDashboardData();
+  // }, []);
 
   if (loading) {
     return (
