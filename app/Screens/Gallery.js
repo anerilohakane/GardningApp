@@ -1,4 +1,5 @@
-// import React, { useState } from 'react';
+
+// import React, { useState, useEffect } from 'react';
 // import {
 //   View,
 //   Text,
@@ -8,13 +9,20 @@
 //   SafeAreaView,
 //   FlatList,
 //   ScrollView,
-//   TouchableOpacity
+//   TouchableOpacity,
+//   ActivityIndicator
 // } from 'react-native';
 // import { Ionicons } from '@expo/vector-icons';
+// import axios from 'axios';
+// import { TENANT_CONFIG } from '../config/constants';
+
 
 // const { width } = Dimensions.get('window');
 // const CARD_WIDTH = width - 40;
 // const CARD_HEIGHT = CARD_WIDTH * 0.6;
+
+// // Default image for fallback
+// const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c';
 
 // // Categories
 // const categories = [
@@ -26,80 +34,156 @@
 //   { id: 'lighting', name: 'Lighting' },
 // ];
 
-// // Landscaping data with categories
-// const landscapingData = [
-//   {
-//     id: '1',
-//     name: 'Premium Lawn Care',
-//     location: 'Austin, TX',
-//     date: 'May 15, 2023',
-//     category: 'lawn',
-//     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c',
-//   },
-//   {
-//     id: '2',
-//     name: 'Stone Pathway Design',
-//     location: 'Denver, CO',
-//     date: 'June 22, 2023',
-//     category: 'hardscape',
-//     image: 'https://i.pinimg.com/736x/c9/15/a1/c915a1d8c26dfab990c32dabad3bc72a.jpg',
-//   },
-//   {
-//     id: '3',
-//     name: 'Native Plant Installation',
-//     location: 'Portland, OR',
-//     date: 'April 5, 2023',
-//     category: 'planting',
-//     image: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae',
-//   },
-//   {
-//     id: '4',
-//     name: 'Smart Irrigation System',
-//     location: 'Phoenix, AZ',
-//     date: 'July 30, 2023',
-//     category: 'irrigation',
-//     image: 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3',
-//   },
-//   {
-//     id: '5',
-//     name: 'Garden Lighting Setup',
-//     location: 'Seattle, WA',
-//     date: 'March 12, 2023',
-//     category: 'lighting',
-//     image: 'https://i.pinimg.com/736x/64/70/d3/6470d3fdfd48d29ffd0dbc2c0160ee68.jpg',
-//   },
-//   {
-//     id: '6',
-//     name: 'Patio & Deck Construction',
-//     location: 'Miami, FL',
-//     date: 'August 8, 2023',
-//     category: 'hardscape',
-//     image: 'https://i.pinimg.com/736x/e9/a0/d6/e9a0d68ead0296cb64ea2b680c2869c9.jpg',
-//   },
-//   {
-//     id: '7',
-//     name: 'Organic Lawn Treatment',
-//     location: 'Boston, MA',
-//     date: 'September 5, 2023',
-//     category: 'lawn',
-//     image: 'https://images.unsplash.com/photo-1560703650-ef3e0f254ae0',
-//   },
-//   {
-//     id: '8',
-//     name: 'Drought-Resistant Plants',
-//     location: 'San Diego, CA',
-//     date: 'October 12, 2023',
-//     category: 'planting',
-//     image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-//   },
-// ];
-
 // const Gallery = () => {
 //   const [activeCategory, setActiveCategory] = useState('all');
+//   const [galleryData, setGalleryData] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
 
-//   const filteredData = landscapingData.filter(item => 
+//   // Enhanced URL validation
+//   const isValidImageUrl = (url) => {
+//     if (!url || typeof url !== 'string') return false;
+//     try {
+//       new URL(url);
+//       return url.startsWith('http') || url.startsWith('https');
+//     } catch {
+//       return false;
+//     }
+//   };
+
+//   const fetchGalleryData = async () => {
+//     try {
+//       setLoading(true);
+//       setError(null);
+//       const response = await axios.get(`${TENANT_CONFIG.API_BASE_URL}/gallery`, {
+//         headers: {
+//           'X-Tenant-ID': TENANT_CONFIG.ID,
+//           'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+//         }
+//       });
+      
+//       console.log('API Response:', JSON.stringify(response.data, null, 2)); // Debug log
+
+//       if (response.data && response.data.success) {
+//         const processedData = response.data.data.map(item => {
+//           // Extract image URLs from objects if needed
+//           const rawImages = Array.isArray(item.images) 
+//             ? item.images.map(img => img.url || img) 
+//             : [];
+          
+//           // Get all possible image sources
+//           const possibleImages = [
+//             ...rawImages,
+//             item.image,
+//             DEFAULT_IMAGE
+//           ].filter(Boolean);
+
+//           // Find the first valid image URL
+//           let imageUrl = DEFAULT_IMAGE;
+//           for (const url of possibleImages) {
+//             if (isValidImageUrl(url)) {
+//               imageUrl = url;
+//               break;
+//             }
+//           }
+
+//           return {
+//             ...item,
+//             images: possibleImages.filter(url => isValidImageUrl(url)),
+//             thumbnailIndex: Math.min(item.thumbnailIndex || 0, rawImages.length - 1),
+//             displayImage: imageUrl
+//           };
+//         });
+//         setGalleryData(processedData);
+//       } else {
+//         setError('Failed to fetch gallery data');
+//       }
+//     } catch (err) {
+//       console.error('Error fetching gallery data:', err);
+//       setError(err.message || 'An error occurred');
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchGalleryData();
+//   }, []);
+
+//   const filteredData = galleryData.filter(item => 
 //     activeCategory === 'all' || item.category === activeCategory
 //   );
+
+//   const renderGalleryItem = ({ item }) => {
+//     const imageUri = item.displayImage || DEFAULT_IMAGE;
+//     console.log('Rendering item:', item._id, 'with image:', imageUri); // Debug log
+
+//     return (
+//       <View style={styles.card}>
+//         <Image 
+//           source={{ 
+//             uri: imageUri,
+//             headers: {
+//               'X-Tenant-ID': TENANT_CONFIG.ID,
+//               'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN
+//             }
+//           }}
+//           style={styles.cardImage}
+//           onError={(e) => {
+//             console.log(`Image load error for item ${item._id}:`, e.nativeEvent.error);
+//             // Update state to show default image for this item
+//             setGalleryData(prev => prev.map(prevItem => 
+//               prevItem._id === item._id 
+//                 ? {...prevItem, displayImage: DEFAULT_IMAGE} 
+//                 : prevItem
+//             ));
+//           }}
+//           defaultSource={{ uri: DEFAULT_IMAGE }}
+//         />
+//         <View style={styles.cardOverlay} />
+//         <View style={styles.infoContainer}>
+//           <Text style={styles.name}>{item.name || item.title}</Text>
+//           <View style={styles.metaContainer}>
+//             <View style={styles.metaItem}>
+//               <Ionicons name="location-outline" size={14} color="#F3F4F6" />
+//               <Text style={styles.metaText}>{item.location}</Text>
+//             </View>
+//             <View style={styles.metaItem}>
+//               <Ionicons name="calendar-outline" size={14} color="#F3F4F6" />
+//               <Text style={styles.metaText}>
+//                 {new Date(item.createdAt || item.date).toLocaleDateString()}
+//               </Text>
+//             </View>
+//           </View>
+//         </View>
+//       </View>
+//     );
+//   };
+
+//   if (loading) {
+//     return (
+//       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+//         <ActivityIndicator size="large" color="#10B981" />
+//         <Text style={styles.loadingText}>Loading gallery...</Text>
+//       </SafeAreaView>
+//     );
+//   }
+
+//   if (error) {
+//     return (
+//       <SafeAreaView style={[styles.container, styles.errorContainer]}>
+//         <Ionicons name="warning-outline" size={48} color="#EF4444" />
+//         <Text style={styles.errorText}>Error loading data</Text>
+//         <Text style={styles.errorSubtext}>{error}</Text>
+//         <TouchableOpacity 
+//           style={styles.retryButton}
+//           onPress={fetchGalleryData}
+//         >
+//           <Text style={styles.retryButtonText}>Try Again</Text>
+//         </TouchableOpacity>
+//       </SafeAreaView>
+//     );
+//   }
 
 //   return (
 //     <SafeAreaView style={styles.container}>
@@ -140,26 +224,8 @@
 //       {/* Gallery */}
 //       <FlatList
 //         data={filteredData}
-//         keyExtractor={(item) => item.id}
-//         renderItem={({ item }) => (
-//           <View style={styles.card}>
-//             <Image source={{ uri: item.image }} style={styles.cardImage} />
-//             <View style={styles.cardOverlay} />
-//             <View style={styles.infoContainer}>
-//               <Text style={styles.name}>{item.name}</Text>
-//               <View style={styles.metaContainer}>
-//                 <View style={styles.metaItem}>
-//                   <Ionicons name="location-outline" size={14} color="#F3F4F6" />
-//                   <Text style={styles.metaText}>{item.location}</Text>
-//                 </View>
-//                 <View style={styles.metaItem}>
-//                   <Ionicons name="calendar-outline" size={14} color="#F3F4F6" />
-//                   <Text style={styles.metaText}>{item.date}</Text>
-//                 </View>
-//               </View>
-//             </View>
-//           </View>
-//         )}
+//         keyExtractor={(item) => item._id || item.id}
+//         renderItem={renderGalleryItem}
 //         contentContainerStyle={styles.galleryContainer}
 //         showsVerticalScrollIndicator={false}
 //         ListEmptyComponent={
@@ -179,9 +245,44 @@
 //     flex: 1,
 //     backgroundColor: '#F9FAFB',
 //   },
+//   loadingContainer: {
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   loadingText: {
+//     marginTop: 16,
+//     color: '#6B7280',
+//   },
+//   errorContainer: {
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     padding: 20,
+//   },
+//   errorText: {
+//     fontSize: 18,
+//     color: '#EF4444',
+//     fontWeight: '600',
+//     marginTop: 16,
+//   },
+//   errorSubtext: {
+//     fontSize: 14,
+//     color: '#9CA3AF',
+//     marginTop: 8,
+//     textAlign: 'center',
+//   },
+//   retryButton: {
+//     marginTop: 20,
+//     paddingVertical: 10,
+//     paddingHorizontal: 20,
+//     backgroundColor: '#EF4444',
+//     borderRadius: 8,
+//   },
+//   retryButtonText: {
+//     color: 'white',
+//     fontWeight: '600',
+//   },
 //   header: {
 //     padding: 16,
-//     // paddingBottom: 12,
 //   },
 //   headerTitle: {
 //     fontSize: 28,
@@ -309,6 +410,8 @@
 
 
 
+
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -318,18 +421,13 @@ import {
   Dimensions,
   SafeAreaView,
   FlatList,
-  ScrollView,
+  TextInput,
   TouchableOpacity,
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-
-// Tenant configuration
-const TENANT_CONFIG = {
-  SUBDOMAIN: 'isaac-gomes-ernandes',
-  ID: '686371dc6afb07584c866517',
-};
+import { TENANT_CONFIG } from '../config/constants';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 40;
@@ -338,19 +436,10 @@ const CARD_HEIGHT = CARD_WIDTH * 0.6;
 // Default image for fallback
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c';
 
-// Categories
-const categories = [
-  { id: 'all', name: 'All Services' },
-  { id: 'lawn', name: 'Lawn Care' },
-  { id: 'hardscape', name: 'Hardscaping' },
-  { id: 'planting', name: 'Planting' },
-  { id: 'irrigation', name: 'Irrigation' },
-  { id: 'lighting', name: 'Lighting' },
-];
-
 const Gallery = () => {
-  const [activeCategory, setActiveCategory] = useState('all');
   const [galleryData, setGalleryData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -376,7 +465,7 @@ const Gallery = () => {
         }
       });
       
-      console.log('API Response:', JSON.stringify(response.data, null, 2)); // Debug log
+      console.log('API Response:', JSON.stringify(response.data, null, 2));
 
       if (response.data && response.data.success) {
         const processedData = response.data.data.map(item => {
@@ -409,6 +498,7 @@ const Gallery = () => {
           };
         });
         setGalleryData(processedData);
+        setFilteredData(processedData); // Initialize filtered data with all data
       } else {
         setError('Failed to fetch gallery data');
       }
@@ -420,17 +510,26 @@ const Gallery = () => {
     }
   };
 
+  // Filter gallery items based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredData(galleryData);
+    } else {
+      const filtered = galleryData.filter(item =>
+        item.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.title?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredData(filtered);
+    }
+  }, [searchQuery, galleryData]);
+
   useEffect(() => {
     fetchGalleryData();
   }, []);
 
-  const filteredData = galleryData.filter(item => 
-    activeCategory === 'all' || item.category === activeCategory
-  );
-
   const renderGalleryItem = ({ item }) => {
     const imageUri = item.displayImage || DEFAULT_IMAGE;
-    console.log('Rendering item:', item._id, 'with image:', imageUri); // Debug log
+    console.log('Rendering item:', item._id, 'with image:', imageUri);
 
     return (
       <View style={styles.card}>
@@ -507,32 +606,22 @@ const Gallery = () => {
         <Text style={styles.headerSubtitle}>Professional landscaping services</Text>
       </View>
 
-      {/* Categories */}
-      <View style={styles.categorySection}>
-        <Text style={styles.sectionTitle}>Service Categories</Text>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContainer}
-        >
-          {categories.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryButton,
-                activeCategory === category.id && styles.activeCategoryButton
-              ]}
-              onPress={() => setActiveCategory(category.id)}
-            >
-              <Text style={[
-                styles.categoryText,
-                activeCategory === category.id && styles.activeCategoryText
-              ]}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by project name..."
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+            <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Gallery */}
@@ -545,8 +634,10 @@ const Gallery = () => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="leaf-outline" size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>No services found</Text>
-            <Text style={styles.emptySubtext}>Try selecting a different category</Text>
+            <Text style={styles.emptyText}>No projects found</Text>
+            <Text style={styles.emptySubtext}>
+              {searchQuery.trim() ? 'Try a different search term' : 'No projects available'}
+            </Text>
           </View>
         }
       />
@@ -609,40 +700,32 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
-  categorySection: {
-    marginBottom: 20,
-    paddingTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    paddingHorizontal: 20,
-    marginBottom: 12,
-  },
-  categoriesContainer: {
-    paddingHorizontal: 20,
-  },
-  categoryButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    height: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  searchIcon: {
     marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
-  activeCategoryButton: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 16,
+    color: '#111827',
   },
-  categoryText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  activeCategoryText: {
-    color: '#FFFFFF',
+  clearButton: {
+    padding: 5,
   },
   galleryContainer: {
     paddingHorizontal: 20,
