@@ -65,7 +65,7 @@ const PaymentPage = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Header with Progress */}
-        <View className="px-6 py-6 bg-white shadow-sm">
+        {/* <View className="px-6 py-6 bg-white shadow-sm">
           <View className="flex-row justify-between items-center mb-4">
             <TouchableOpacity onPress={() => navigation.goBack()}>
               <View className="w-8 h-8 rounded-full bg-green-100 items-center justify-center">
@@ -84,7 +84,7 @@ const PaymentPage = () => {
           <View className="w-full bg-green-100 rounded-full h-2">
             <View className="bg-green-600 rounded-full h-2" style={{ width: '100%' }} />
           </View>
-        </View>
+        </View> */}
 
         {/* Order Summary Card */}
         <View className="mx-6 mt-6 bg-white rounded-xl shadow-md overflow-hidden">

@@ -179,18 +179,18 @@ const ContactScreen = ({ navigation }) => {
   return (
     <ScrollView className="flex-1 bg-gray-50 p-5">
       <View className="mb-8">
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           className="flex-row items-center mb-6 p-2 -ml-2"
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back" size={28} color="#16A34A" />
           <Text className="text-green-600 ml-1 text-lg font-medium">Back</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
         
-        <View className="flex-row items-center">
+        {/* <View className="flex-row items-center">
           <Ionicons name="mail-outline" size={28} color="#166534" className="mr-3" />
           <Text className="text-green-900 font-bold text-3xl">Contact Us</Text>
-        </View>
+        </View> */}
         <Text className="text-gray-600 mt-2 text-base">
           Have questions? Fill out the form below and we'll get back to you soon.
         </Text>

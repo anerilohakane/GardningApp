@@ -309,8 +309,8 @@ import {
   SafeAreaView, 
   FlatList,
   TouchableOpacity,
-  ScrollView,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -323,18 +323,12 @@ const CARD_HEIGHT = CARD_WIDTH * 1.1;
 // Default fallback image
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c';
 
-const categories = [
-  { id: 'all', name: 'All Projects', icon: 'apps' },
-  { id: 'Residential', name: 'Homes', icon: 'home' },
-  { id: 'Commercial', name: 'Businesses', icon: 'business' },
-  { id: 'Public', name: 'Public Spaces', icon: 'park' },
-];
-
 const PortfolioScreen = ({navigation}) => {
-  const [activeCategory, setActiveCategory] = useState('all');
   const [portfolioData, setPortfolioData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Enhanced URL validation
   const isValidImageUrl = (url) => {
@@ -354,104 +348,113 @@ const PortfolioScreen = ({navigation}) => {
   };
 
   const fetchPortfolioData = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    const response = await axios.get(`${TENANT_CONFIG.API_BASE_URL}/portfolio`, {
-      headers: {
-        'X-Tenant-ID': TENANT_CONFIG.ID,
-        'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
-      },
-      params: {
-        serviceType: activeCategory === 'all' ? undefined : activeCategory
-      }
-    });
-
-    console.log('API Response:', JSON.stringify(response.data, null, 2));
-
-    if (response.data?.success) {
-      const processedData = response.data.data.map(item => {
-        // Extract URLs from image objects
-        const imageUrls = (item.images || []).map(img => img.url).filter(url => url);
-        
-        // Get the first valid image URL or use default
-        const imageUrl = imageUrls.length > 0 
-          ? imageUrls[0] 
-          : DEFAULT_IMAGE;
-
-        return {
-          id: item._id,
-          title: item.title || 'Untitled Project',
-          location: item.location || 'Location not specified',
-          type: item.serviceType || 'Uncategorized',
-          image: imageUrl,
-          createdAt: item.createdAt,
-          allImages: imageUrls // Store all images for potential use
-        };
-      });
+    try {
+      setLoading(true);
+      setError(null);
       
-      setPortfolioData(processedData);
-    } else {
-      setError('Failed to fetch portfolio data');
+      const response = await axios.get(`${TENANT_CONFIG.API_BASE_URL}/portfolio`, {
+        headers: {
+          'X-Tenant-ID': TENANT_CONFIG.ID,
+          'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+        }
+      });
+
+      console.log('API Response:', JSON.stringify(response.data, null, 2));
+
+      if (response.data?.success) {
+        const processedData = response.data.data.map(item => {
+          // Extract URLs from image objects
+          const imageUrls = (item.images || []).map(img => img.url).filter(url => url);
+          
+          // Get the first valid image URL or use default
+          const imageUrl = imageUrls.length > 0 
+            ? imageUrls[0] 
+            : DEFAULT_IMAGE;
+
+          return {
+            id: item._id,
+            title: item.title || 'Untitled Project',
+            location: item.location || 'Location not specified',
+            type: item.serviceType || 'Uncategorized',
+            image: imageUrl,
+            createdAt: item.createdAt,
+            allImages: imageUrls // Store all images for potential use
+          };
+        });
+        
+        setPortfolioData(processedData);
+        setFilteredData(processedData);
+      } else {
+        setError('Failed to fetch portfolio data');
+      }
+    } catch (err) {
+      console.error('Error fetching portfolio data:', err);
+      setError(err.message || 'An error occurred');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Error fetching portfolio data:', err);
-    setError(err.message || 'An error occurred');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     fetchPortfolioData();
-  }, [activeCategory]);
+  }, []);
 
-  const filteredData = portfolioData.filter(item => 
-    activeCategory === 'all' || item.type === activeCategory
-  );
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredData(portfolioData);
+    } else {
+      const filtered = portfolioData.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.type.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredData(filtered);
+    }
+  }, [searchQuery, portfolioData]);
 
   const renderItem = ({ item }) => {
     console.log('Rendering item:', item.id, 'with image:', item.image); // Debug log
     
-   return (
-    <TouchableOpacity 
-      style={styles.cardContainer}
-      onPress={() => navigation.navigate('PortfolioDetail', { portfolioId: item.id })}
-    >
-      <View style={styles.card}>
-        <Image 
-          source={{ 
-            uri: item.image,
-            headers: {
-              'X-Tenant-ID': TENANT_CONFIG.ID,
-              'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN
-            }
-          }} 
-          style={styles.cardImage}
-          onError={(e) => {
-            console.log('Image load error:', e.nativeEvent.error);
-            setPortfolioData(prev => prev.map(prevItem => 
-              prevItem.id === item.id ? {...prevItem, image: DEFAULT_IMAGE} : prevItem
-            ));
-          }}
-          onLoadStart={() => console.log('Loading started for:', item.image)}
-          onLoadEnd={() => console.log('Loading completed for:', item.image)}
-          defaultSource={{ uri: DEFAULT_IMAGE }}
-        />
-        <View style={styles.cardOverlay} />
-        <View style={styles.cardContent}>
-          <Text style={styles.projectType}>{item.type}</Text>
-          <Text style={styles.projectTitle}>{item.title}</Text>
-          <View style={styles.locationContainer}>
-            <MaterialIcons name="location-on" size={14} color="#fff" />
-            <Text style={styles.locationText}>{item.location}</Text>
+    return (
+      <TouchableOpacity 
+        style={styles.cardContainer}
+        onPress={() => navigation.navigate('PortfolioDetail', { portfolioId: item.id })}
+      >
+        <View style={styles.card}>
+          <Image 
+            source={{ 
+              uri: item.image,
+              headers: {
+                'X-Tenant-ID': TENANT_CONFIG.ID,
+                'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN
+              }
+            }} 
+            style={styles.cardImage}
+            onError={(e) => {
+              console.log('Image load error:', e.nativeEvent.error);
+              const updatedData = portfolioData.map(prevItem => 
+                prevItem.id === item.id ? {...prevItem, image: DEFAULT_IMAGE} : prevItem
+              );
+              setPortfolioData(updatedData);
+              setFilteredData(updatedData);
+            }}
+            onLoadStart={() => console.log('Loading started for:', item.image)}
+            onLoadEnd={() => console.log('Loading completed for:', item.image)}
+            defaultSource={{ uri: DEFAULT_IMAGE }}
+          />
+          <View style={styles.cardOverlay} />
+          <View style={styles.cardContent}>
+            <Text style={styles.projectType}>{item.type}</Text>
+            <Text style={styles.projectTitle}>{item.title}</Text>
+            <View style={styles.locationContainer}>
+              <MaterialIcons name="location-on" size={14} color="#fff" />
+              <Text style={styles.locationText}>{item.location}</Text>
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   if (loading) {
     return (
@@ -489,36 +492,17 @@ const PortfolioScreen = ({navigation}) => {
         <Ionicons name="leaf" size={28} color="#2E8B57" />
       </View>
 
-      {/* Category Section */}
-      <View style={styles.categorySection}>
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesContainer}
-        >
-          {categories.map(category => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryButton,
-                activeCategory === category.id && styles.activeCategoryButton
-              ]}
-              onPress={() => setActiveCategory(category.id)}
-            >
-              <Ionicons 
-                name={category.icon} 
-                size={18} 
-                color={activeCategory === category.id ? '#fff' : '#2E8B57'} 
-              />
-              <Text style={[
-                styles.categoryText,
-                activeCategory === category.id && styles.activeCategoryText
-              ]}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color="#689F38" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search projects..."
+          placeholderTextColor="#689F38"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
       </View>
 
       {/* Project Grid */}
@@ -532,7 +516,9 @@ const PortfolioScreen = ({navigation}) => {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="leaf-outline" size={48} color="#C8E6C9" />
-            <Text style={styles.emptyText}>No projects in this category</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? 'No matching projects found' : 'No projects found'}
+            </Text>
             <TouchableOpacity
               style={styles.refreshButton}
               onPress={fetchPortfolioData}
@@ -608,36 +594,24 @@ const styles = StyleSheet.create({
     color: '#689F38',
     marginTop: 4,
   },
-  categorySection: {
-    backgroundColor: '#E8F5E9',
-    paddingVertical: 12,
-  },
-  categoriesContainer: {
-    paddingHorizontal: 16,
-  },
-  categoryButton: {
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 24,
+    marginHorizontal: 24,
+    marginVertical: 8,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
+    paddingVertical: 8,
   },
-  activeCategoryButton: {
-    backgroundColor: '#2E8B57',
-    borderColor: '#2E8B57',
+  searchIcon: {
+    marginRight: 8,
   },
-  categoryText: {
-    fontSize: 14,
-    color: '#2E8B57',
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  activeCategoryText: {
-    color: '#fff',
+  searchInput: {
+    flex: 1,
+    color: '#2E7D32',
+    fontSize: 16,
+    paddingVertical: 4,
   },
   galleryContainer: {
     padding: 16,
@@ -715,6 +689,7 @@ const styles = StyleSheet.create({
     color: '#689F38',
     fontWeight: '600',
     marginTop: 16,
+    textAlign: 'center',
   },
   refreshButton: {
     marginTop: 16,

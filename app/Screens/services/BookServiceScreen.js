@@ -352,8 +352,8 @@ const serviceId = service?.id || service?._id;
           className="flex-row items-center mb-4"
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#16A34A" />
-          <Text className="text-green-600 ml-2 text-lg">Back</Text>
+          {/* <Ionicons name="arrow-back" size={24} color="#16A34A" />
+          <Text className="text-green-600 ml-2 text-lg">Back</Text> */}
         </TouchableOpacity>
         
         <Text className="text-green-800 font-bold text-2xl">Book {service.name}</Text>

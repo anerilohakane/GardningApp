@@ -267,10 +267,10 @@ const Header = ({ scrollY }) => {
         >
           Transform Your Outdoor Space
         </Animated.Text>
-        <View className="flex-row items-center">
+        {/* <View className="flex-row items-center">
           <MaterialIcons name="location-on" size={16} color="#fff" />
           <Text className="text-white text-sm ml-1">Austin, TX • 78°F Sunny</Text>
-        </View>
+        </View> */}
       </View>
     </Animated.View>
   );

@@ -230,7 +230,7 @@ const MyEstimatesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>My Estimates</Text>
+      {/* <Text style={styles.header}>My Estimates</Text> */}
       
       {estimates.length === 0 ? (
         <View style={styles.emptyContainer}>

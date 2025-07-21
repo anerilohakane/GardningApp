@@ -523,7 +523,8 @@ import {
   Keyboard,
   Animated,
   Easing,
-  Dimensions
+  Dimensions,
+  StyleSheet
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -536,8 +537,7 @@ const { width, height } = Dimensions.get('window');
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email address').min(1, 'Email is required'),
-  phone: z.string().optional(),
-  role: z.string().min(1, 'Role is required'),
+  phone: z.string().min(1, 'Phone number is required'),
 });
 
 const SignPage = ({ navigation }) => {
@@ -545,11 +545,6 @@ const SignPage = ({ navigation }) => {
   const [shakeAnimation] = useState(new Animated.Value(0));
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(height * 0.3));
-  const [roles, setRoles] = useState([
-    { label: 'Customer', value: 'customer' },
-    { label: 'TenantAdmin', value: 'tenantAdmin' },
-    // Add other roles as needed
-  ]);
 
   const {
     control,
@@ -562,7 +557,7 @@ const SignPage = ({ navigation }) => {
       name: '',
       email: '',
       phone: '',
-      role: '',
+      role: 'customer',
     }
   });
 
@@ -581,135 +576,105 @@ const SignPage = ({ navigation }) => {
     ]).start();
   }, []);
 
-const handleRegister = async (data) => {
-  setIsLoading(true);
-  try {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(data.role !== 'superAdmin' && { 
+  const handleRegister = async (data) => {
+    setIsLoading(true);
+    try {
+      const requestData = {
+        ...data,
+        role: 'customer'
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
         'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
         'X-Tenant-ID': TENANT_CONFIG.ID
-      })
-    };
+      };
 
-    const response = await fetch(`${TENANT_CONFIG.API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(data),
-    });
+      const response = await fetch(`${TENANT_CONFIG.API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(requestData),
+      });
 
-    const responseData = await response.json();
+      const responseData = await response.json();
 
-    if (!response.ok) {
-      throw new Error(responseData.message || 'Registration failed');
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Registration failed');
+      }
+
+      Alert.alert(
+        'Registration Successful',
+        'Please check your email to set your password.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+      );
+    } catch (error) {
+      console.error('Registration error:', error);
+      Alert.alert(
+        'Registration Failed',
+        error.message || 'Please contact support if this continues'
+      );
+    } finally {
+      setIsLoading(false);
     }
-
-    Alert.alert(
-      'Registration Successful',
-      'Please check your email to set your password.',
-      [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-    );
-  } catch (error) {
-    console.error('Registration error:', error);
-    Alert.alert(
-      'Registration Failed',
-      error.message || 'Please contact support if this continues'
-    );
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-  const triggerShakeAnimation = () => {
-    Animated.sequence([
-      Animated.timing(shakeAnimation, {
-        toValue: 10,
-        duration: 50,
-        easing: Easing.linear,
-        useNativeDriver: true
-      }),
-      Animated.timing(shakeAnimation, {
-        toValue: -10,
-        duration: 50,
-        useNativeDriver: true
-      }),
-      Animated.timing(shakeAnimation, {
-        toValue: 10,
-        duration: 50,
-        useNativeDriver: true
-      }),
-      Animated.timing(shakeAnimation, {
-        toValue: 0,
-        duration: 50,
-        useNativeDriver: true
-      }),
-    ]).start();
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        style={styles.container}
       >
         <LinearGradient
           colors={['#f7f7f7', '#e8f5e9']}
-          className="absolute left-0 right-0 top-0 h-full"
+          style={styles.background}
         />
 
         <ScrollView
-          contentContainerStyle={{ flexGrow: 1 }}
+          contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Section */}
+          {/* Hero Section - Takes 70% of screen height */}
           <Animated.View
-            className="h-96 relative"
-            style={{ opacity: fadeAnim }}
+            style={[styles.heroContainer, { opacity: fadeAnim }]}
           >
             <Image
               source={{ uri: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80' }}
-              className="w-full h-full absolute"
+              style={styles.heroImage}
               resizeMode="cover"
             />
             <LinearGradient
               colors={['rgba(0,0,0,0.7)', 'transparent']}
-              className="absolute left-0 right-0 top-0 h-full"
+              style={styles.imageOverlay}
             />
-            <View className="absolute bottom-0 left-0 right-0 p-6">
-              <Text className="text-3xl font-bold text-white mb-11">Create Your Account</Text>
+            <View style={styles.heroTextContainer}>
+              <Text style={styles.heroText}>Create Your Account</Text>
             </View>
           </Animated.View>
 
-          {/* Form Section */}
+          {/* Form Section - Takes remaining space and sticks to bottom */}
           <Animated.View
-            className="bg-white rounded-t-3xl px-6 pt-6 -mt-8 shadow-lg"
-            style={{
+            style={[styles.formContainer, {
               transform: [{ translateX: shakeAnimation }, { translateY: slideAnim }],
               opacity: fadeAnim,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 20,
-              elevation: 10,
-            }}
+            }]}
           >
-            <View className="flex-row items-center justify-center mb-6">
-              <Ionicons name="person-add" size={24} color="#4CAF50" className="mr-2" />
-              <Text className="text-2xl font-bold text-gray-800">Register</Text>
+            <View style={styles.formHeader}>
+              <Ionicons name="person-add" size={24} color="#4CAF50" style={styles.formIcon} />
+              <Text style={styles.formTitle}>Register</Text>
             </View>
 
             {/* Name Input */}
-            <View className="mb-5">
-              <Text className="text-sm font-medium text-gray-600 mb-2">Full Name</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Full Name</Text>
               <Controller
                 control={control}
                 name="name"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
-                    <View className={`flex-row items-center bg-gray-50 rounded-xl px-4 ${errors.name ? 'border border-red-500' : ''}`}>
+                    <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
                       <TextInput
-                        className="flex-1 h-12 text-gray-800 text-base"
+                        style={styles.inputField}
                         placeholder="Enter your full name"
                         placeholderTextColor="#9CA3AF"
                         onBlur={onBlur}
@@ -721,12 +686,12 @@ const handleRegister = async (data) => {
                           name="alert-circle"
                           size={20}
                           color="#EF4444"
-                          className="absolute right-4"
+                          style={styles.errorIcon}
                         />
                       )}
                     </View>
                     {errors.name && (
-                      <Text className="text-red-500 text-xs mt-1 ml-1">{errors.name.message}</Text>
+                      <Text style={styles.errorText}>{errors.name.message}</Text>
                     )}
                   </View>
                 )}
@@ -734,16 +699,16 @@ const handleRegister = async (data) => {
             </View>
 
             {/* Email Input */}
-            <View className="mb-5">
-              <Text className="text-sm font-medium text-gray-600 mb-2">Email Address</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email Address</Text>
               <Controller
                 control={control}
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
-                    <View className={`flex-row items-center bg-gray-50 rounded-xl px-4 ${errors.email ? 'border border-red-500' : ''}`}>
+                    <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                       <TextInput
-                        className="flex-1 h-12 text-gray-800 text-base"
+                        style={styles.inputField}
                         placeholder="Enter your email"
                         placeholderTextColor="#9CA3AF"
                         keyboardType="email-address"
@@ -757,12 +722,12 @@ const handleRegister = async (data) => {
                           name="alert-circle"
                           size={20}
                           color="#EF4444"
-                          className="absolute right-4"
+                          style={styles.errorIcon}
                         />
                       )}
                     </View>
                     {errors.email && (
-                      <Text className="text-red-500 text-xs mt-1 ml-1">{errors.email.message}</Text>
+                      <Text style={styles.errorText}>{errors.email.message}</Text>
                     )}
                   </View>
                 )}
@@ -770,16 +735,16 @@ const handleRegister = async (data) => {
             </View>
 
             {/* Phone Input */}
-            <View className="mb-5">
-              <Text className="text-sm font-medium text-gray-600 mb-2">Phone Number (Optional)</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Phone Number</Text>
               <Controller
                 control={control}
                 name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View>
-                    <View className={`flex-row items-center bg-gray-50 rounded-xl px-4 ${errors.phone ? 'border border-red-500' : ''}`}>
+                    <View style={[styles.inputWrapper, errors.phone && styles.inputError]}>
                       <TextInput
-                        className="flex-1 h-12 text-gray-800 text-base"
+                        style={styles.inputField}
                         placeholder="Enter your phone number"
                         placeholderTextColor="#9CA3AF"
                         keyboardType="phone-pad"
@@ -792,44 +757,12 @@ const handleRegister = async (data) => {
                           name="alert-circle"
                           size={20}
                           color="#EF4444"
-                          className="absolute right-4"
+                          style={styles.errorIcon}
                         />
                       )}
                     </View>
                     {errors.phone && (
-                      <Text className="text-red-500 text-xs mt-1 ml-1">{errors.phone.message}</Text>
-                    )}
-                  </View>
-                )}
-              />
-            </View>
-
-            {/* Role Selection */}
-            <View className="mb-5">
-              <Text className="text-sm font-medium text-gray-600 mb-2">Role</Text>
-              <Controller
-                control={control}
-                name="role"
-                render={({ field: { onChange, value } }) => (
-                  <View>
-                    <View className={`bg-gray-50 rounded-xl px-4 ${errors.role ? 'border border-red-500' : ''}`}>
-                      {roles.map((role) => (
-                        <TouchableOpacity
-                          key={role.value}
-                          className={`py-3 flex-row items-center ${value === role.value ? 'border-l-4 border-green-500 pl-3' : ''}`}
-                          onPress={() => onChange(role.value)}
-                        >
-                          <View className={`w-5 h-5 rounded-full border-2 mr-3 ${value === role.value ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
-                            {value === role.value && (
-                              <Ionicons name="checkmark" size={14} color="white" />
-                            )}
-                          </View>
-                          <Text className="text-gray-800">{role.label}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                    {errors.role && (
-                      <Text className="text-red-500 text-xs mt-1 ml-1">{errors.role.message}</Text>
+                      <Text style={styles.errorText}>{errors.phone.message}</Text>
                     )}
                   </View>
                 )}
@@ -838,28 +771,28 @@ const handleRegister = async (data) => {
 
             {/* Register Button */}
             <TouchableOpacity
-              className={`bg-green-500 rounded-xl h-12 justify-center items-center mb-4 overflow-hidden ${isLoading ? 'opacity-80' : ''}`}
+              style={[styles.registerButton, isLoading && styles.buttonDisabled]}
               onPress={handleSubmit(handleRegister)}
               disabled={isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color="#ffffff" size="small" />
               ) : (
-                <Text className="text-white text-base font-semibold">Register</Text>
+                <Text style={styles.buttonText}>Register</Text>
               )}
               <LinearGradient
                 colors={['rgba(255,255,255,0.3)', 'transparent']}
-                className="absolute top-0 left-0 right-0 bottom-0"
+                style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               />
             </TouchableOpacity>
 
             {/* Sign In Link */}
-            <View className="flex-row justify-center mb-8">
-              <Text className="text-gray-500 text-sm">Already have an account? </Text>
+            <View style={styles.signInContainer}>
+              <Text style={styles.signInText}>Already have an account? </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                <Text className="text-green-500 font-semibold text-sm">Sign In</Text>
+                <Text style={styles.signInLink}>Sign In</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -868,5 +801,151 @@ const handleRegister = async (data) => {
     </TouchableWithoutFeedback>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '100%',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+  },
+  heroContainer: {
+    height: height * 0.5, // 70% of screen height
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+  },
+  imageOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '100%',
+  },
+  heroTextContainer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    padding: 24,
+  },
+  heroText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  formContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    paddingBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+    marginTop: -32, // Pull up to overlap hero section
+    minHeight: height * 0.4, // Minimum 40% of screen height
+  },
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  formIcon: {
+    marginRight: 8,
+  },
+  formTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#4B5563',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  inputError: {
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  inputField: {
+    flex: 1,
+    height: 48,
+    color: '#1F2937',
+    fontSize: 16,
+  },
+  errorIcon: {
+    position: 'absolute',
+    right: 16,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  registerButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 12,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  buttonDisabled: {
+    opacity: 0.8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  signInContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  signInText: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  signInLink: {
+    color: '#4CAF50',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});
 
 export default SignPage;

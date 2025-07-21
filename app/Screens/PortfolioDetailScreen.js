@@ -101,9 +101,7 @@ const PortfolioDetailScreen = ({ route, navigation }) => {
       <ScrollView>
         {/* Header with back button */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#2E8B57" />
-          </TouchableOpacity>
+          
           <Text style={styles.headerTitle}>{portfolio.title}</Text>
           <View style={{ width: 24 }} /> {/* Spacer for alignment */}
         </View>

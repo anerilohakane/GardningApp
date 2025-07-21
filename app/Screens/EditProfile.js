@@ -183,7 +183,7 @@ const EditProfileScreen = ({ navigation,route }) => {
   return (
     <ScrollView className="bg-white p-4">
       <View className="mb-6">
-        <Text className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</Text>
+        {/* <Text className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</Text> */}
         
         {/* Personal Information */}
         <View className="mb-6">

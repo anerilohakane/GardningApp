@@ -878,73 +878,73 @@ const CustomerDetailsScreen = ({ route, navigation }) => {
     setCommunicationPrefs(prev => ({ ...prev, [type]: !prev[type] }));
   };
   
-  const handleConfirmBooking = async () => {
-    try {
-      setLoading(true);
-      
-      // First update the customer profile
-      console.log('Updating customer profile...');
-      const updateResponse = await fetch(`${TENANT_CONFIG.API_BASE_URL}/customers/me`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
-          'X-Tenant-ID': TENANT_CONFIG.ID,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user: {
-            name,
-            email,
-            phone
-          },
-          address: customerAddress,
-          propertyDetails: properties.map(prop => ({
-            name: prop.name,
-            propertyAddress: {
-              street: prop.propertyAddress.street,
-              city: prop.propertyAddress.city,
-              state: prop.propertyAddress.state,
-              zipCode: prop.propertyAddress.zipCode,
-              country: prop.propertyAddress.country
-            },
-            size: prop.size,
-            features: prop.features,
-            accessInstructions: prop.accessInstructions
-          })),
-          notificationPreferences: communicationPrefs
-        })
-      });
-
-      if (!updateResponse.ok) {
-        const errorData = await updateResponse.json();
-        console.error('Profile update error:', errorData);
-        throw new Error(errorData.message || 'Failed to update profile');
-      }
-
-      // Then navigate to confirmation with all data
-      const bookingData = {
-        service,
-        customerDetails: {
+  // In CustomerDetailsScreen.js, update the handleConfirmBooking function:
+const handleConfirmBooking = async () => {
+  try {
+    setLoading(true);
+    
+    // First update the customer profile
+    const updateResponse = await fetch(`${TENANT_CONFIG.API_BASE_URL}/customers/me`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+        'X-Tenant-ID': TENANT_CONFIG.ID,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        user: {
           name,
           email,
-          phone,
-          address: customerAddress,
-          notificationPreferences: communicationPrefs
+          phone
         },
-        properties,
-        bookingDetails
-      };
-      
-      console.log('Booking data prepared:', bookingData);
-      navigation.navigate('BookingConfirmation', { bookingData });
-    } catch (error) {
-      console.error('Booking error:', error);
-      Alert.alert('Error', 'Failed to confirm booking');
-    } finally {
-      setLoading(false);
+        address: customerAddress,
+        propertyDetails: properties.map(prop => ({
+          name: prop.name,
+          propertyAddress: prop.propertyAddress,
+          size: prop.size,
+          features: prop.features,
+          accessInstructions: prop.accessInstructions
+        })),
+        notificationPreferences: communicationPrefs
+      })
+    });
+
+    if (!updateResponse.ok) {
+      const errorData = await updateResponse.json();
+      throw new Error(errorData.message || 'Failed to update profile');
     }
-  };
+
+    // Pass the booking data with proper time information
+    const bookingData = {
+      service,
+      bookingDetails: {
+        date: bookingDetails.date,
+        time: bookingDetails.time,
+        startTime: bookingDetails.startTime,
+        endTime: bookingDetails.endTime,
+        notes: '',
+        recurring: false,
+        frequency: null
+      },
+      properties,
+      customerDetails: {
+        name,
+        email,
+        phone,
+        address: customerAddress,
+        notificationPreferences: communicationPrefs
+      }
+    };
+    
+    navigation.navigate('BookingConfirmation', { bookingData });
+  } catch (error) {
+    console.error('Booking error:', error);
+    Alert.alert('Error', 'Failed to confirm booking');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const currentProperty = properties.find(prop => prop.id === activeProperty);
 

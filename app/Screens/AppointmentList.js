@@ -45,6 +45,40 @@ const AppointmentList = () => {
     }
   };
 
+  const formatTimeSlot = (startTime, endTime) => {
+    try {
+      // If the times are already in HH:mm format (from BookServiceScreen)
+      if (typeof startTime === 'string' && startTime.includes(':')) {
+        const formatTime = (timeStr) => {
+          const [hours, minutes] = timeStr.split(':');
+          const hour = parseInt(hours, 10);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const hour12 = hour % 12 || 12;
+          return `${hour12}:${minutes} ${ampm}`;
+        };
+        return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+      }
+      
+      // If the times are ISO strings (from API response)
+      if (startTime instanceof Date || typeof startTime === 'string') {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        return `${start.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })} - ${end.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`;
+      }
+
+      return 'Time not available';
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'Invalid time format';
+    }
+  };
+
   // Fetch appointments from backend
   const fetchAppointments = async () => {
     try {
@@ -64,17 +98,25 @@ const AppointmentList = () => {
         }
       });
       
-      const transformedAppointments = response.data.data.map(appointment => ({
+      // Sort appointments by createdAt date (newest first)
+      const sortedAppointments = response.data.data.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
+      const transformedAppointments = sortedAppointments.map(appointment => ({
         id: appointment._id,
-        date: new Date(appointment.date).toLocaleDateString('en-US'),
-        time: new Date(appointment.date).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit'
+        date: new Date(appointment.date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric'
         }),
+        time: formatTimeSlot(appointment.timeSlot.startTime, appointment.timeSlot.endTime),
         status: appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1),
         service: appointment.service?.name || 'Service',
         category: appointment.service?.category || 'Not Specified',
-        rawData: appointment
+        rawData: appointment,
+        createdAt: appointment.createdAt // Keep the createdAt field for reference
       }));
       
       setAppointments(transformedAppointments);
@@ -263,7 +305,11 @@ const AppointmentList = () => {
       <View style={styles.cardBody}>
         <View style={styles.detailRow}>
           <Ionicons name="calendar" size={18} color="#555" />
-          <Text style={styles.detailText}>{item.date} at {item.time}</Text>
+          <Text style={styles.detailText}>{item.date}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="time" size={18} color="#555" />
+          <Text style={styles.detailText}>{item.time}</Text>
         </View>
       </View>
 
@@ -323,8 +369,6 @@ const AppointmentList = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>My Appointments</Text>
-
       <FlatList
         data={appointments}
         renderItem={renderAppointmentItem}
@@ -518,15 +562,12 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   serviceName: {
-    // fontSize: 14,
-    // color: '#666',
-    // marginTop: 2,
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
   },
   categoryName:{
-fontSize: 14,
+    fontSize: 14,
     color: '#666',
     marginTop: 2,
   },

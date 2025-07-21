@@ -34,6 +34,7 @@
 
 
 
+// Updated BookingConfirmationScreen.js
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -54,107 +55,138 @@ const BookingConfirmationScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const createAppointment = async () => {
-      try {
-        setLoading(true);
-        
-        // Validate booking data exists
-        if (!bookingData) {
-          throw new Error('Booking data is missing');
-        }
+  try {
+    setLoading(true);
+    
+    if (!bookingData) {
+      throw new Error('Booking data is missing');
+    }
 
-        // Get the user token from AsyncStorage
-        const token = await AsyncStorage.getItem('token');
-        if (!token) {
-          throw new Error('User not authenticated');
-        }
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      throw new Error('User not authenticated');
+    }
 
-        // Validate required fields
-          if (!bookingData?.service?.id && !bookingData?.service?._id) {
-    throw new Error('Service information is missing');
-  }
+    // Format the date and time for the email
+    const formattedDate = new Date(bookingData.bookingDetails.date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
 
-        if (!bookingData?.bookingDetails?.date) {
-          throw new Error('Booking date is missing');
-        }
+    const formattedTime = formatTimeSlot(
+      bookingData.bookingDetails.startTime,
+      bookingData.bookingDetails.endTime
+    );
 
-        if (!bookingData?.bookingDetails?.startTime || !bookingData?.bookingDetails?.endTime) {
-          throw new Error('Booking times are missing');
-        }
-
-        // Parse the times
-        let startHours, startMinutes, endHours, endMinutes;
-        try {
-          [startHours, startMinutes] = bookingData.bookingDetails.startTime.split(':').map(Number);
-          [endHours, endMinutes] = bookingData.bookingDetails.endTime.split(':').map(Number);
-          
-          if (isNaN(startHours) || isNaN(startMinutes) || isNaN(endHours) || isNaN(endMinutes)) {
-            throw new Error('Invalid time format');
-          }
-        } catch (err) {
-          throw new Error('Invalid time format. Please use HH:mm format (e.g., "08:00")');
-        }
-
-        // Create date objects
-        const startDate = new Date(bookingData.bookingDetails.date);
-        startDate.setHours(startHours, startMinutes, 0, 0);
-
-        const endDate = new Date(bookingData.bookingDetails.date);
-        endDate.setHours(endHours, endMinutes, 0, 0);
-
-        // Prepare payload with proper null checks
-        const payload = {
-          service: bookingData.service.id,
-          date: bookingData.bookingDetails.date,
-          timeSlot: {
-            startTime: startDate.toISOString(),
-            endTime: endDate.toISOString()
-          },
-          customerNotes: bookingData.bookingDetails.notes || '',
-          propertyDetails: (bookingData.properties || []).map(property => ({
-            propertyId: property?.id || '',
-            address: {
-              street: property?.street || '',
-              city: property?.city || '',
-              state: property?.state || '',
-              zip: property?.zip || ''
-            },
-            areas: property?.areas ? 
-              Object.entries(property.areas)
-                .filter(([_, needsService]) => needsService)
-                .map(([area]) => area)
-              : []
-          }))
-        };
-
-        // Make the API call to create appointment
-        const response = await axios.post(
-          `${TENANT_CONFIG.API_BASE_URL}/appointments`,
-          payload,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
-              'X-Tenant-ID': TENANT_CONFIG.ID,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        if (response.data && response.data.data) {
-          setAppointment(response.data.data);
-        } else {
-          throw new Error('Invalid response from server');
-        }
-      } catch (err) {
-        console.error('Appointment creation failed:', err);
-        setError(err.response?.data?.message || err.message || 'Failed to create appointment');
-      } finally {
-        setLoading(false);
-      }
+    // Prepare payload with additional formatted fields
+    const payload = {
+      service: bookingData.service.id,
+      date: bookingData.bookingDetails.date,
+      timeSlot: {
+        startTime: bookingData.bookingDetails.startTime,
+        endTime: bookingData.bookingDetails.endTime,
+        formatted: formattedTime // Add formatted time string
+      },
+      formattedDate: formattedDate, // Add formatted date string
+      customerNotes: bookingData.bookingDetails.notes || '',
+      propertyDetails: (bookingData.properties || []).map(property => ({
+        propertyId: property?.id || '',
+        address: {
+          street: property?.street || '',
+          city: property?.city || '',
+          state: property?.state || '',
+          zip: property?.zip || ''
+        },
+        areas: property?.areas ? 
+          Object.entries(property.areas)
+            .filter(([_, needsService]) => needsService)
+            .map(([area]) => area)
+          : []
+      }))
     };
+
+    const response = await axios.post(
+      `${TENANT_CONFIG.API_BASE_URL}/appointments`,
+      payload,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN,
+          'X-Tenant-ID': TENANT_CONFIG.ID,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.data) {
+      setAppointment(response.data.data);
+    } else {
+      throw new Error('Invalid response from server');
+    }
+  } catch (err) {
+    console.error('Appointment creation failed:', err);
+    setError(err.response?.data?.message || err.message || 'Failed to create appointment');
+  } finally {
+    setLoading(false);
+  }
+};
 
     createAppointment();
   }, [bookingData]);
+
+ 
+const formatTimeSlot = (startTime, endTime) => {
+  try {
+    // If the times are already in HH:mm format (from BookServiceScreen)
+    if (typeof startTime === 'string' && startTime.includes(':')) {
+      const formatTime = (timeStr) => {
+        const [hours, minutes] = timeStr.split(':');
+        const hour = parseInt(hours, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return `${hour12}:${minutes} ${ampm}`;
+      };
+      return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+    }
+    
+    // If the times are ISO strings (from API response)
+    if (startTime instanceof Date || typeof startTime === 'string') {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      return `${start.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })} - ${end.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })}`;
+    }
+
+    return 'Time not available';
+  } catch (error) {
+    console.error('Error formatting time:', error);
+    return 'Invalid time format';
+  }
+};
+
+// And update the time display in the return statement:
+<View className="bg-gray-50 p-4 rounded-lg mb-3">
+  <Text className="text-gray-700 font-medium mb-1">Date:</Text>
+  <Text className="text-gray-800">
+    {new Date(bookingData.bookingDetails.date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    })}
+  </Text>
+  <Text className="text-gray-700 font-medium mb-1 mt-2">Time:</Text>
+  <Text className="text-gray-800">
+    {formatTimeSlot(bookingData.bookingDetails.startTime, bookingData.bookingDetails.endTime)}
+  </Text>
+</View>
 
   if (loading) {
     return (
@@ -195,16 +227,6 @@ const BookingConfirmationScreen = ({ route, navigation }) => {
     return null;
   }
 
-  // Format the appointment date
-  const formattedDate = new Date(appointment.date).toLocaleString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
   return (
     <View className="flex-1 bg-gray-50 items-center justify-center p-8">
       <View className="bg-white rounded-2xl p-8 items-center shadow-sm shadow-green-100 w-full max-w-md">
@@ -223,8 +245,19 @@ const BookingConfirmationScreen = ({ route, navigation }) => {
           </View>
           
           <View className="bg-gray-50 p-4 rounded-lg mb-3">
-            <Text className="text-gray-700 font-medium mb-1">Date & Time:</Text>
-            <Text className="text-gray-800">{formattedDate}</Text>
+            <Text className="text-gray-700 font-medium mb-1">Date:</Text>
+            <Text className="text-gray-800">
+              {new Date(appointment.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </Text>
+            <Text className="text-gray-700 font-medium mb-1 mt-2">Time:</Text>
+            <Text className="text-gray-800">
+              {formatTimeSlot(appointment.timeSlot.startTime, appointment.timeSlot.endTime)}
+            </Text>
           </View>
           
           <View className="bg-gray-50 p-4 rounded-lg">
@@ -247,7 +280,6 @@ const BookingConfirmationScreen = ({ route, navigation }) => {
         <TouchableOpacity 
           className="border border-green-600 rounded-lg py-3 px-6 w-full items-center"
           onPress={() => navigation.navigate('HomeTab', { screen: 'AppointmentList' })}
-          
         >
           <Text className="text-green-600 font-bold text-lg">View My Appointments</Text>
         </TouchableOpacity>

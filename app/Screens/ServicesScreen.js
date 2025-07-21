@@ -3668,7 +3668,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, Text, Image, ScrollView, TextInput, TouchableOpacity, 
-  Dimensions, Animated, ActivityIndicator, Alert
+  Dimensions, Animated, ActivityIndicator, Alert, FlatList
 } from 'react-native';
 import { FontAwesome, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
@@ -3680,7 +3680,6 @@ const HomeScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredServices, setFilteredServices] = useState([]);
   const [services, setServices] = useState([]);
-  const [popularServices, setPopularServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -3712,53 +3711,52 @@ const HomeScreen = ({ navigation }) => {
       });
 
       if (response.data?.success) {
-       const allServices = response.data.data.map(service => {
-  const isValidImageUrl = (url) => {
-    if (!url || typeof url !== 'string') return false;
-    try {
-      new URL(url);
-      return url.startsWith('http');
-    } catch {
-      return false;
-    }
-  };
+        const allServices = response.data.data.map(service => {
+          const isValidImageUrl = (url) => {
+            if (!url || typeof url !== 'string') return false;
+            try {
+              new URL(url);
+              return url.startsWith('http');
+            } catch {
+              return false;
+            }
+          };
 
-  const possibleImageSources = [
-    service.image?.url,
-    service.image,
-    ...(service.images || []).map(img => img.url || img)
-  ].filter(Boolean);
+          const possibleImageSources = [
+            service.image?.url,
+            service.image,
+            ...(service.images || []).map(img => img.url || img)
+          ].filter(Boolean);
 
-  let imageUrl = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c';
-  for (const url of possibleImageSources) {
-    if (isValidImageUrl(url)) {
-      imageUrl = url;
-      break;
-    }
-  }
+          let imageUrl = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c';
+          for (const url of possibleImageSources) {
+            if (isValidImageUrl(url)) {
+              imageUrl = url;
+              break;
+            }
+          }
 
-  return {
-    _id: service._id,  // Ensure MongoDB _id is included
-    id: service._id,   // Also include as 'id' for compatibility
-    name: service.name,
-    description: service.description,
-    price: `$${service.basePrice}`,
-    originalPrice: service.originalPrice ? `$${service.originalPrice}` : undefined,
-    rating: service.rating || 4.5,
-    reviews: service.reviewsCount || Math.floor(Math.random() * 100) + 10,
-    image: imageUrl,
-    category: service.category,
-    isPopular: service.rating >= 4.7,
-    isDeal: service.originalPrice && service.basePrice < service.originalPrice,
-    discount: service.originalPrice 
-      ? Math.round((1 - service.basePrice / service.originalPrice) * 100)
-      : undefined,
-    duration: service.duration
-  };
-});
+          return {
+            _id: service._id,  // Ensure MongoDB _id is included
+            id: service._id,   // Also include as 'id' for compatibility
+            name: service.name,
+            description: service.description,
+            price: `$${service.basePrice}`,
+            originalPrice: service.originalPrice ? `$${service.originalPrice}` : undefined,
+            rating: service.rating || 4.5,
+            reviews: service.reviewsCount || Math.floor(Math.random() * 100) + 10,
+            image: imageUrl,
+            category: service.category,
+            isPopular: service.rating >= 4.7,
+            isDeal: service.originalPrice && service.basePrice < service.originalPrice,
+            discount: service.originalPrice 
+              ? Math.round((1 - service.basePrice / service.originalPrice) * 100)
+              : undefined,
+            duration: service.duration
+          };
+        });
 
         setServices(allServices);
-        setPopularServices(allServices.filter(s => s.rating >= 4.5).slice(0, 4));
       }
     } catch (err) {
       console.error('Error fetching services:', err);
@@ -3824,6 +3822,42 @@ const HomeScreen = ({ navigation }) => {
     );
   }
 
+  const renderServiceItem = ({ item }) => (
+    <TouchableOpacity
+      className="mb-4 bg-white rounded-xl overflow-hidden shadow-sm shadow-green-100"
+      style={{ width: serviceCardWidth }}
+      activeOpacity={0.8}
+      onPress={() => navigation.navigate('ServiceDetail', { service: item })}
+    >
+      <View className="relative">
+        <Image
+          source={{ 
+            uri: item.image,
+            headers: {
+              'X-Tenant-ID': TENANT_CONFIG.ID,
+              'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN
+            }
+          }}
+          className="w-full h-40 rounded-t-xl"
+          resizeMode="cover"
+          onError={(e) => {
+            console.log('Image load error:', e.nativeEvent.error);
+            console.log('Failed image URL:', item.image);
+            setServices(prev => prev.map(s => 
+              s.id === item.id 
+                ? {...s, image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c'} 
+                : s
+            ));
+          }}
+        />
+        <View className="absolute inset-0 bg-black/20 rounded-xl" />
+        <View className="absolute bottom-0 left-0 right-0 p-3">
+          <Text className="text-white font-semibold text-lg">{item.name}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <View className="flex-1 bg-gray-50 pt-4">
       <Animated.View 
@@ -3869,159 +3903,40 @@ const HomeScreen = ({ navigation }) => {
             <Text className="text-green-800 font-bold text-xl">
               {searchQuery ? 'Search Results' : 'Our Services'}
             </Text>
-            {!searchQuery && (
+            {/* {!searchQuery && (
               <TouchableOpacity className="flex-row items-center">
                 <Text className="text-green-600 text-sm mr-1">See all</Text>
                 <MaterialIcons name="chevron-right" size={16} color="#16A34A" />
               </TouchableOpacity>
-            )}
+            )} */}
           </View>
           
           {servicesToDisplay.length > 0 ? (
-            <View className="flex-row flex-wrap justify-between mb-2">
-              {servicesToDisplay.map((service) => (
-                <TouchableOpacity
-                  key={service.id}
-                  className="mb-4 bg-white rounded-xl overflow-hidden shadow-sm shadow-green-100"
-                  style={{ width: serviceCardWidth }}
-                  activeOpacity={0.8}
-                  onPress={() => navigation.navigate('ServiceDetail', { service })}
-                >
-                  <View className="relative">
-                    <Image
-                      source={{ 
-                        uri: service.image,
-                        headers: {
-                          'X-Tenant-ID': TENANT_CONFIG.ID,
-                          'X-Tenant-Subdomain': TENANT_CONFIG.SUBDOMAIN
-                        }
-                      }}
-                      className="w-full h-40 rounded-t-xl"
-                      resizeMode="cover"
-                      onError={(e) => {
-                        console.log('Image load error:', e.nativeEvent.error);
-                        console.log('Failed image URL:', service.image);
-                        setServices(prev => prev.map(s => 
-                          s.id === service.id 
-                            ? {...s, image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c'} 
-                            : s
-                        ));
-                      }}
-                    />
-                    <View className="absolute inset-0 bg-black/20 rounded-xl" />
-                    <View className="absolute bottom-0 left-0 right-0 p-3">
-                      <Text className="text-white font-semibold text-lg">{service.name}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <FlatList
+              data={servicesToDisplay}
+              renderItem={renderServiceItem}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              columnWrapperStyle={{ justifyContent: 'space-between' }}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              scrollEnabled={false} // Disable internal scrolling since we're in a ScrollView
+            />
           ) : searchQuery ? (
             <View className="py-10 items-center justify-center">
               <Text className="text-gray-500">No services found matching "{searchQuery}"</Text>
             </View>
           ) : null}
 
-          {!searchQuery && (
-            <>
-              <View className="flex-row justify-between items-center mb-4 mt-6">
-                <Text className="text-green-800 font-bold text-xl">Popular Services</Text>
-                <TouchableOpacity className="flex-row items-center">
-                  <Text className="text-green-600 text-sm mr-1">See all</Text>
-                  <MaterialIcons name="chevron-right" size={16} color="#16A34A" />
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                className="mb-6"
-              >
-                {popularServices.map((service) => (
-                  <TouchableOpacity
-                    key={service.id}
-                    className="bg-white rounded-xl overflow-hidden shadow-sm shadow-green-100 mr-4"
-                    style={{ width: width * 0.7 }}
-                    activeOpacity={0.8}
-                    onPress={() => navigation.navigate('ServiceDetail', { service })}
-                  >
-                    <View className="relative">
-                      <Image
-                        source={{ uri: service.image }}
-                        className="w-full h-48 rounded-t-xl"
-                        resizeMode="cover"
-                      />
-                      {service.isPopular && (
-                        <View className="absolute top-3 left-3 bg-green-600 rounded-full px-3 py-1 flex-row items-center">
-                          <FontAwesome name="star" size={13} color="yellow" className="mr-1" />
-                          <Text className="text-white text-xs font-medium">Popular</Text>
-                        </View>
-                      )}
-                      <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/60">
-                        <Text className="text-white font-bold text-xl mb-1">{service.name}</Text>
-                        <View className="flex-row items-center mb-2">
-                          <FontAwesome name="star" size={16} color="#FBBF24" />
-                          <Text className="text-yellow-300 font-medium ml-1">{service.rating}</Text>
-                          <Text className="text-gray-300 text-sm ml-1">({service.reviews} reviews)</Text>
-                        </View>
-                        <Text className="text-white font-bold text-lg">{service.price}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-green-800 font-bold text-xl">Spring Specials</Text>
-                <TouchableOpacity className="flex-row items-center">
-                  <Text className="text-green-600 text-sm mr-1">See all</Text>
-                  <MaterialIcons name="chevron-right" size={16} color="#16A34A" />
-                </TouchableOpacity>
-              </View>
-              
-              {services.filter(s => s.discount).slice(0, 1).map(service => (
-                <TouchableOpacity 
-                  key={service.id}
-                  className="w-full mb-8 bg-white rounded-xl overflow-hidden shadow-sm shadow-green-100"
-                  activeOpacity={0.8}
-                  onPress={() => navigation.navigate('ServiceDetail', { service })}
-                >
-                  <View className="relative">
-                    <Image
-                      source={{ uri: service.image }}
-                      className="w-full h-48 rounded-t-xl"
-                      resizeMode="cover"
-                    />
-                    <View className="absolute top-3 left-3 bg-green-600 rounded-full px-3 py-1">
-                      <Text className="text-white text-xs font-medium">Spring Special</Text>
-                    </View>
-                    <View className="absolute bottom-0 left-0 right-0 p-4 bg-black/70">
-                      <Text className="text-white font-bold text-xl mb-1">{service.name}</Text>
-                      <View className="flex-row items-center">
-                        {service.originalPrice && (
-                          <Text className="text-gray-300 line-through mr-2">{service.originalPrice}</Text>
-                        )}
-                        <Text className="text-green-200 font-bold text-lg">
-                          {service.discount}% Off - Now {service.price}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-
-              <View className="bg-green-700 rounded-xl p-5 mb-8">
-                <Text className="text-white font-bold text-xl mb-2">Need Help With Your Project?</Text>
-                <Text className="text-green-100 mb-4">Our landscaping experts are ready to transform your outdoor space.</Text>
-                <TouchableOpacity 
-                  className="bg-white rounded-lg py-3 px-5 flex-row justify-center items-center"
-                  onPress={() => navigation.navigate('Contact')}
-                >
-                  <Text className="text-green-700 font-bold text-center">Get a Free Quote</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
+          <View className="bg-green-700 rounded-xl p-5 mb-8 mt-4">
+            <Text className="text-white font-bold text-xl mb-2">Need Help With Your Project?</Text>
+            <Text className="text-green-100 mb-4">Our landscaping experts are ready to transform your outdoor space.</Text>
+            <TouchableOpacity 
+              className="bg-white rounded-lg py-3 px-5 flex-row justify-center items-center"
+              onPress={() => navigation.navigate('Contact')}
+            >
+              <Text className="text-green-700 font-bold text-center">Get a Free Quote</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>

@@ -1,141 +1,228 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from 'react-native-paper';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { TENANT_CONFIG } from '../../config/constants';
+import React from 'react';
+import { View, ScrollView, StyleSheet } from 'react-native';
+import {
+  Card,
+  Title,
+  Text,
+  Avatar,
+  Chip,
+  Divider,
+  ActivityIndicator,
+  Colors,
+} from 'react-native-paper';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const TenantDashboardScreen = ({ navigation }) => {
-  const [stats, setStats] = useState({
-    totalServices: 0,
-    activeServices: 0,
-    totalCustomers: 0,
-    revenue: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [recentServices, setRecentServices] = useState([]);
+const Dashboard = () => {
+  // Hardcoded data for the dashboard
+  const dashboardData = {
+    stats: {
+      appointments: 24,
+      services: 8,
+      estimates: 5,
+      customers: 42,
+    },
+    upcomingAppointments: [
+      {
+        id: '1',
+        customer: 'John Smith',
+        service: 'Annual Checkup',
+        date: '2023-06-15T09:30:00Z',
+      },
+      {
+        id: '2',
+        customer: 'Sarah Johnson',
+        service: 'Teeth Cleaning',
+        date: '2023-06-15T11:00:00Z',
+      },
+      {
+        id: '3',
+        customer: 'Michael Brown',
+        service: 'Root Canal',
+        date: '2023-06-16T14:15:00Z',
+      },
+    ],
+    pendingEstimates: [
+      {
+        id: '1',
+        customer: 'Emily Davis',
+        created: '2023-06-10T08:45:00Z',
+      },
+      {
+        id: '2',
+        customer: 'Robert Wilson',
+        created: '2023-06-12T13:20:00Z',
+      },
+    ],
+  };
 
-  // useEffect(() => {
-  //   const fetchDashboardData = async () => {
-  //     try {
-  //       const token = await AsyncStorage.getItem('token');
-        
-  //       const response = await axios.get('http://192.168.0.120:5000/api/v1/tenant/dashboard', {
-  //         headers: {
-  //           'Authorization': `Bearer ${token}`,
-  //           'X-Tenant-ID': TENANT_CONFIG.ID
-  //         }
-  //       });
-
-  //       setStats(response.data.stats);
-  //       setRecentServices(response.data.recentServices);
-  //     } catch (error) {
-  //       console.error('Error fetching dashboard data:', error);
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchDashboardData();
-  // }, []);
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10B981" />
-      </View>
-    );
-  }
+  const formatDate = (dateString) => {
+    const options = { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Dashboard</Text>
-      
+      <Title style={styles.header}>Tenant Dashboard</Title>
+
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <Card style={styles.card}>
+        <Card style={styles.statCard}>
           <Card.Content>
-            <Ionicons name="construct" size={24} color="#3B82F6" />
-            <Text style={styles.cardTitle}>Total Services</Text>
-            <Text style={styles.cardValue}>{stats.totalServices}</Text>
+            <View style={styles.statHeader}>
+              <Icon name="calendar-clock" size={24} color="#3f51b5" />
+              <Text style={styles.statTitle}>Appointments</Text>
+            </View>
+            <Title style={[styles.statValue, { color: '#3f51b5' }]}>
+              {dashboardData.stats.appointments}
+            </Title>
+            <View style={styles.statFooter}>
+              <Icon name="arrow-up" size={16} color="#4caf50" />
+              <Text style={styles.statChange}>5% from last month</Text>
+            </View>
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={styles.statCard}>
           <Card.Content>
-            <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-            <Text style={styles.cardTitle}>Active Services</Text>
-            <Text style={styles.cardValue}>{stats.activeServices}</Text>
+            <View style={styles.statHeader}>
+              <Icon name="room-service" size={24} color="#9c27b0" />
+              <Text style={styles.statTitle}>Services</Text>
+            </View>
+            <Title style={[styles.statValue, { color: '#9c27b0' }]}>
+              {dashboardData.stats.services}
+            </Title>
+            <View style={styles.statFooter}>
+              <Icon name="plus" size={16} color="#4caf50" />
+              <Text style={styles.statChange}>2 new services</Text>
+            </View>
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={styles.statCard}>
           <Card.Content>
-            <Ionicons name="people" size={24} color="#8B5CF6" />
-            <Text style={styles.cardTitle}>Total Customers</Text>
-            <Text style={styles.cardValue}>{stats.totalCustomers}</Text>
+            <View style={styles.statHeader}>
+              <Icon name="file-document-edit" size={24} color="#ff9800" />
+              <Text style={styles.statTitle}>Pending Estimates</Text>
+            </View>
+            <Title style={[styles.statValue, { color: '#ff9800' }]}>
+              {dashboardData.stats.estimates}
+            </Title>
+            <View style={styles.statFooter}>
+              {dashboardData.stats.estimates > 0 ? (
+                <>
+                  <Icon name="alert" size={16} color="#f44336" />
+                  <Text style={[styles.statChange, { color: '#f44336' }]}>
+                    Needs attention
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <Icon name="check" size={16} color="#4caf50" />
+                  <Text style={styles.statChange}>All clear</Text>
+                </>
+              )}
+            </View>
           </Card.Content>
         </Card>
 
-        <Card style={styles.card}>
+        <Card style={styles.statCard}>
           <Card.Content>
-            <Ionicons name="cash" size={24} color="#F59E0B" />
-            <Text style={styles.cardTitle}>Revenue</Text>
-            <Text style={styles.cardValue}>${stats.revenue.toLocaleString()}</Text>
+            <View style={styles.statHeader}>
+              <Icon name="account-group" size={24} color="#2196f3" />
+              <Text style={styles.statTitle}>Customers</Text>
+            </View>
+            <Title style={[styles.statValue, { color: '#2196f3' }]}>
+              {dashboardData.stats.customers}
+            </Title>
+            <View style={styles.statFooter}>
+              <Icon name="arrow-up" size={16} color="#4caf50" />
+              <Text style={styles.statChange}>10% from last month</Text>
+            </View>
           </Card.Content>
         </Card>
       </View>
 
-      {/* Recent Services */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Services</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('TenantServicesMain')}>
-            <Text style={styles.seeAll}>See All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {recentServices.length > 0 ? (
-          recentServices.map((service, index) => (
-            <Card key={index} style={styles.serviceCard}>
-              <Card.Content>
-                <View style={styles.serviceHeader}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  <Text style={styles.serviceStatus(service.status)}>{service.status}</Text>
+      {/* Upcoming Appointments */}
+      <Card style={styles.sectionCard}>
+        <Card.Content>
+          <Title style={styles.sectionTitle}>Upcoming Appointments</Title>
+          {dashboardData.upcomingAppointments.length > 0 ? (
+            dashboardData.upcomingAppointments.map((appointment, index) => (
+              <View key={appointment.id}>
+                <View style={styles.timelineItem}>
+                  <Avatar.Icon 
+                    size={24} 
+                    icon="calendar" 
+                    color="#3f51b5" 
+                    style={styles.timelineIcon} 
+                  />
+                  <View style={styles.timelineContent}>
+                    <Text style={styles.timelineTitle}>
+                      {appointment.customer}
+                    </Text>
+                    <Text style={styles.timelineSubtitle}>
+                      {appointment.service}
+                    </Text>
+                    <Text style={styles.timelineDate}>
+                      {formatDate(appointment.date)}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.serviceCustomer}>{service.customerName}</Text>
-                <Text style={styles.serviceDate}>{service.date}</Text>
-                <Text style={styles.servicePrice}>${service.price}</Text>
-              </Card.Content>
-            </Card>
-          ))
-        ) : (
-          <Text style={styles.noData}>No recent services found</Text>
-        )}
-      </View>
+                {index < dashboardData.upcomingAppointments.length - 1 && <Divider />}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyMessage}>No upcoming appointments</Text>
+          )}
+        </Card.Content>
+      </Card>
 
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('TenantServicesMain')}
-          >
-            <Ionicons name="add" size={24} color="#FFFFFF" />
-            <Text style={styles.actionText}>Add Service</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('TenantReports')}
-          >
-            <Ionicons name="document-text" size={24} color="#FFFFFF" />
-            <Text style={styles.actionText}>Generate Report</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Pending Estimates */}
+      <Card style={styles.sectionCard}>
+        <Card.Content>
+          <Title style={styles.sectionTitle}>Pending Estimates</Title>
+          {dashboardData.pendingEstimates.length > 0 ? (
+            dashboardData.pendingEstimates.map((estimate, index) => (
+              <View key={estimate.id}>
+                <View style={styles.timelineItem}>
+                  <Avatar.Icon 
+                    size={24} 
+                    icon="file-document" 
+                    color="#ff9800" 
+                    style={styles.timelineIcon} 
+                  />
+                  <View style={styles.timelineContent}>
+                    <Text style={styles.timelineTitle}>
+                      {estimate.customer}
+                    </Text>
+                    <Text style={styles.timelineSubtitle}>
+                      Created: {formatDate(estimate.created)}
+                    </Text>
+                    <View style={styles.statusContainer}>
+                      <Chip 
+                        icon="alert" 
+                        style={styles.pendingChip}
+                        textStyle={styles.chipText}
+                      >
+                        Pending
+                      </Chip>
+                    </View>
+                  </View>
+                </View>
+                {index < dashboardData.pendingEstimates.length - 1 && <Divider />}
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyMessage}>No pending estimates</Text>
+          )}
+        </Card.Content>
+      </Card>
     </ScrollView>
   );
 };
@@ -143,118 +230,103 @@ const TenantDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
     padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 24,
-    color: '#111827',
+    marginBottom: 16,
+    color: '#333',
+    marginTop:24,
   },
   statsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 16,
   },
-  card: {
+  statCard: {
     width: '48%',
     marginBottom: 16,
     borderRadius: 12,
-    elevation: 2,
+    elevation: 3,
   },
-  cardTitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
-  },
-  cardValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginTop: 4,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
+  statHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  statTitle: {
+    marginLeft: 8,
+    fontSize: 14,
+    // color: Colors.grey600,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  statFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statChange: {
+    marginLeft: 4,
+    fontSize: 12,
+    // color: Colors.grey600,
+  },
+  sectionCard: {
     marginBottom: 16,
+    borderRadius: 12,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#111827',
+    marginBottom: 16,
+    color: '#333',
   },
-  seeAll: {
-    color: '#10B981',
-    fontWeight: '500',
-  },
-  serviceCard: {
-    marginBottom: 12,
-    borderRadius: 8,
-  },
-  serviceHeader: {
+  timelineItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    paddingVertical: 12,
   },
-  serviceName: {
+  timelineIcon: {
+    marginRight: 16,
+    backgroundColor: 'transparent',
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  timelineTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#111827',
-  },
-  serviceStatus: (status) => ({
-    color: status === 'Completed' ? '#10B981' : 
-           status === 'Pending' ? '#F59E0B' : '#EF4444',
-    fontWeight: '500',
-  }),
-  serviceCustomer: {
-    fontSize: 14,
-    color: '#6B7280',
     marginBottom: 4,
   },
-  serviceDate: {
+  timelineSubtitle: {
+    fontSize: 14,
+    // color: Colors.grey600,
+    marginBottom: 4,
+  },
+  timelineDate: {
     fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 8,
+    // color: Colors.grey500,
   },
-  servicePrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
+  statusContainer: {
+    marginTop: 8,
   },
-  noData: {
+  pendingChip: {
+    backgroundColor: '#fff3e0',
+    alignSelf: 'flex-start',
+  },
+  chipText: {
+    color: '#ff9800',
+  },
+  emptyMessage: {
     textAlign: 'center',
-    color: '#9CA3AF',
-    marginTop: 16,
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    width: '48%',
-    backgroundColor: '#10B981',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  actionText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginLeft: 8,
+    // color: Colors.grey500,
+    paddingVertical: 16,
   },
 });
 
-export default TenantDashboardScreen;
+export default Dashboard;
